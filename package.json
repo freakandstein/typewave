@@ -1,0 +1,18 @@
+{
+  "name": "typewave",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/unit/*.test.js",
+    "test:bridge": ".venv/bin/python -m unittest discover -s test/bridge -t .",
+    "test:e2e": "node --test --test-concurrency=1 --test-timeout=180000 test/e2e/*.test.mjs",
+    "bridge": ".venv/bin/python -m bridge.bridge",
+    "eeg": ".venv/bin/python -m eeg",
+    "start": ".venv/bin/python -m tools.start",
+    "start:fake": ".venv/bin/python -m tools.start --fake"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
+}

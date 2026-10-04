@@ -1,0 +1,11 @@
+node_modules/
+.venv/
+.scratch-demo/
+__pycache__/
+*.webm
+test-results/
+eeg/.device.json
+eeg/.streamer.pid
+eeg/.eeg.lock
+*.mp4
+.DS_Store

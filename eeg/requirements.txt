@@ -1,0 +1,8 @@
+# Sumber EEG mandiri (Muse lewat muselsl + LSL). Versi sama dengan yang terbukti berdampingan di Python 3.14 mesin ini.
+# muselsl 2.3.x memakai asyncio.get_event_loop() dan gagal di Python 3.14; 2.5.x sudah memperbaikinya.
+muselsl==2.5.0
+bleak==3.0.2
+pylsl==1.18.2
+brainflow==5.22.2
+numpy==2.5.0
+scipy==1.18.0
