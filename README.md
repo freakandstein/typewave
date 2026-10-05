@@ -154,14 +154,16 @@ Browser Source tidak menerima keyboard: kartu laporan dipicu hotkey global (di b
 ## Monitor kecil di atas keyboard
 
 Buka `http://127.0.0.1:8770/?controls=1` di Chrome **sebelum sesi mulai** (supaya datanya sama dengan yang di OBS).
-Tab ini menampilkan tombol ekspor PNG (1920×1080 dan 1080×1920) saat kartu laporan terbuka.
+Tab ini menampilkan tombol ekspor PNG (1920×1080 dan 1080×1920) di pojok kanan bawah, selalu terlihat. Ekspor memakai data sesi tab itu sendiri.
 
 ## Hotkey
 
+Di Mac, `ctrl` berarti **Control** (⌃) dan `alt` berarti **Option** (⌥), bukan Command (⌘). Tekan Control dan Option bersamaan, lalu hurufnya. Tidak perlu Fn.
+
 | Hotkey | Fungsi |
 |---|---|
-| `ctrl+alt+p` | pause: bridge berhenti meneruskan key; halaman menampilkan `paused`. Tekan lagi untuk lanjut |
-| `ctrl+alt+r` | tampil/tutup kartu laporan (9 detik lalu menutup sendiri) |
+| Control + Option + P (`ctrl+alt+p`) | pause: bridge berhenti meneruskan key; halaman menampilkan `paused`. Tekan lagi untuk lanjut |
+| Control + Option + R (`ctrl+alt+r`) | tampil/tutup kartu laporan (9 detik lalu menutup sendiri) |
 | `R` / `Esc` | tampil/tutup kartu laporan, hanya bila halaman sedang fokus (tab biasa) |
 
 Listener hanya membaca, jadi chord hotkey tetap sampai ke aplikasi yang sedang fokus; pilih aplikasi yang tidak memakai chord itu.
@@ -256,7 +258,7 @@ Bila kamu tetap memakai server EEG di project terpisah (`eeg_server.py` di `127.
 - Bridge hanya listen di `127.0.0.1`; WebSocket menolak `Origin` dan `Host` asing (tanpa ini, situs mana pun di browser bisa
   membaca aliran ketikan lewat localhost).
 - macOS memblokir listener di kolom password. Prompt password di terminal biasanya tidak memicu secure input kecuali
-  "Secure Keyboard Entry" dinyalakan; tekan `ctrl+alt+p` sebelum mengetik password di terminal.
+  "Secure Keyboard Entry" dinyalakan; tekan Control + Option + P sebelum mengetik password di terminal.
 
 ## Tes
 

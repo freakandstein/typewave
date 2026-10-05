@@ -280,12 +280,12 @@ Batas 48 percikan aktif (yang tertua didaur ulang). Kontur luar tidak bergerak; 
 
 ## 7. Kartu laporan sesi
 
-Dipicu tombol `R` di halaman (hanya bila halaman sedang fokus), `{"t":"ctl","report":true}`, atau hotkey global `ctrl+alt+r` di bridge. Hotkey global adalah satu-satunya cara saat halaman berada di OBS, karena Browser Source tidak menerima keyboard. Tampil 9 detik lalu menutup sendiri; `Esc` atau pemicu kedua menutup lebih awal. Saat tampil, scene di belakangnya diredupkan 60% dan HUD disembunyikan supaya teksnya tidak menumpuk dengan kartu.
+Dipicu tombol `R` di halaman (hanya bila halaman sedang fokus), `{"t":"ctl","report":true}`, atau hotkey global `ctrl+alt+r` di bridge (di Mac: Control + Option + R). Hotkey global adalah satu-satunya cara saat halaman berada di OBS, karena Browser Source tidak menerima keyboard. Tampil 9 detik lalu menutup sendiri; `Esc` atau pemicu kedua menutup lebih awal. Saat tampil, scene di belakangnya diredupkan 60% dan HUD disembunyikan supaya teksnya tidak menumpuk dengan kartu.
 
 - **Strip sesi:** satu strip horizontal berwarna (warna = state per detik) dengan garis WPM di atasnya.
 - **Angka:** durasi, WPM rata-rata (hanya saat mengetik) dan puncak, menit di flow (waktu `pos` di 0.35..0.65), jeda terpanjang, jumlah backspace.
 - Data: log `{t, pos, wpm, hr}` per 1 detik, dicatat berdasarkan timestamp (bukan hitungan tick) dan celah diisi nilai terakhir bila timer tertahan, ditambah penghitung berjalan (jumlah backspace, jeda terpanjang, puncak WPM, detik mengetik, detik di flow). 4 jam = 14.400 sampel, ringan di memori.
-- Ekspor PNG 1920×1080 dan 1080×1920 (`canvas.toBlob`) dengan tombol di kartu, tampil hanya bila `?controls=1` (dipakai pada tab di monitor kecil, bukan di OBS). Tab itu harus dibuka sebelum sesi mulai supaya datanya sama dengan yang di OBS.
+- Ekspor PNG 1920×1080 dan 1080×1920 (`canvas.toBlob`) dengan tombol di panel kanan bawah (selalu terlihat), tampil hanya bila `?controls=1` (dipakai pada tab di monitor kecil, bukan di OBS). Tab itu harus dibuka sebelum sesi mulai supaya datanya sama dengan yang di OBS.
 - Teks hook dibuat otomatis dari angka, contoh: `flow selama 14 menit 20 detik` (`?lang=en`: `14 min 20 s in flow`). Bila menit di flow nol, hook memakai state dominan, mis. `dominan calm selama 8 menit`.
 
 ---
@@ -305,7 +305,7 @@ Bridge juga menyajikan file statis supaya OBS memakai `http://127.0.0.1:8770/` (
 
 - **Listener:** tap Quartz listen-only (`pyobjc-framework-Quartz`) untuk event `keyDown` dan `flagsChanged`. Hanya membaca keycode, flag auto-repeat, dan flag modifier; tidak pernah menerjemahkan keycode ke karakter. Callback hanya memasukkan event ke antrean asyncio (`call_soon_threadsafe`).
 - **Izin:** bila izin Input Monitoring belum ada, bridge mencetak instruksi yang jelas, `/status.listener = no-permission`, `hello.keys = false`, dan mencoba lagi tiap 3 detik tanpa crash.
-- **Hotkey:** `ctrl+alt+p` (pause) dan `ctrl+alt+r` (laporan). Listener hanya membaca, jadi chord hotkey tetap sampai ke aplikasi yang sedang fokus; pilih aplikasi yang tidak memakai chord itu.
+- **Hotkey:** `ctrl+alt+p` (pause) dan `ctrl+alt+r` (laporan); di Mac `ctrl` adalah Control (⌃) dan `alt` adalah Option (⌥), bukan Command, dan Fn tidak dibutuhkan. Listener hanya membaca, jadi chord hotkey tetap sampai ke aplikasi yang sedang fokus; pilih aplikasi yang tidak memakai chord itu.
 - **Secure input:** bila tersedia, bridge memantau `IsSecureEventInputEnabled()` tiap detik; saat aktif, `/status.listener = secure-input` dan mengirim `ctl.secure`.
 - **Python:** venv khusus di `.venv/`. Pakai versi Python terbaru yang bisa memasang `aiohttp`, `pyobjc-framework-Quartz`, dan dependensi `eeg/requirements.txt` (`muselsl`, `bleak`, `pylsl`, `brainflow`, `numpy`, `scipy`; versinya dipin dan butuh Python 3.12+).
 
