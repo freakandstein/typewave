@@ -61,13 +61,15 @@ flowchart LR
 ## Mulai cepat
 
 ```bash
-git clone https://github.com/freakandstein/typewave && cd typewave
+git clone https://github.com/freakandstein/typewave
+cd typewave
 npm install
-python3 -m venv .venv && .venv/bin/pip install -r bridge/requirements.txt -r eeg/requirements.txt
-npm start            # headset Muse menyala; atau npm run start:fake tanpa headset
+python3 -m venv .venv
+.venv/bin/pip install -r bridge/requirements.txt -r eeg/requirements.txt
+npm start
 ```
 
-Lalu buka `http://127.0.0.1:8770/`. Butuh macOS, Node 22+, dan Python 3.12+; izin dan rinciannya ada di bagian berikut.
+Nyalakan headset Muse sebelum `npm start` (atau pakai `npm run start:fake` tanpa headset), lalu buka `http://127.0.0.1:8770/`. Butuh macOS, Node 22+, dan Python 3.12+; izin dan rinciannya ada di bagian berikut.
 
 ## Coba tanpa headset
 
