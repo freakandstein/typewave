@@ -5,6 +5,15 @@ const AUTO = ['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK', 'K
 
 export const wanderPos = (tSec) => clamp(0.5 + 0.42 * Math.sin(tSec / 14) + 0.08 * Math.sin(tSec / 3.1));
 
+// Level gelombang yang ikut pos seperti EEG sungguhan: tenang = theta dan alpha tinggi, tegang = beta tinggi (dengan sedikit goyangan sendiri).
+export function wanderBands(pos, tSec) {
+  return {
+    theta: clamp(0.85 - 0.75 * pos + 0.12 * Math.sin(tSec / 4.3)),
+    alpha: clamp(0.8 - 0.55 * pos + 0.15 * Math.sin(tSec / 5.7 + 1)),
+    beta: clamp(0.1 + 0.85 * pos + 0.1 * Math.sin(tSec / 3.7 + 2)),
+  };
+}
+
 export function nextAutoKey(rng) {
   const r = rng();
   if (r < 0.04) return 'Backspace';
@@ -12,10 +21,15 @@ export function nextAutoKey(rng) {
   return AUTO[Math.floor(rng() * AUTO.length) % AUTO.length];
 }
 
-export const nextAutoDelay = (rng) => (rng() < 0.08 ? 400 + rng() * 800 : 70 + rng() * 140);
+// pos (opsional, mode demo): tenang mengetik pelan, tegang cepat.
+export function nextAutoDelay(rng, pos = null) {
+  const base = rng() < 0.08 ? 400 + rng() * 800 : 70 + rng() * 140;
+  return pos === null ? base : base * (2.4 - 1.8 * clamp(pos));
+}
 
-export function createSim({ bus, root, doc = document, now = Date.now, setTimer = setTimeout, clearTimer = clearTimeout, rng = Math.random, mindMs = 200 }) {
-  const st = { pos: 0.5, hr: 70, q: 1, theta: 0.5, alpha: 0.5, beta: 0.5, wander: false, mind: true, auto: false };
+// demo: langsung mengetik sendiri, dan pos serta level gelombang mengembara (slider mengambil alih).
+export function createSim({ bus, root, doc = document, now = Date.now, setTimer = setTimeout, clearTimer = clearTimeout, rng = Math.random, mindMs = 200, demo = false }) {
+  const st = { pos: 0.5, hr: 70, q: 1, theta: 0.5, alpha: 0.5, beta: 0.5, wander: demo, bandWander: demo, mind: true, auto: false };
   const t0 = now();
   let mindTimer = null;
   let autoTimer = null;
@@ -28,7 +42,7 @@ export function createSim({ bus, root, doc = document, now = Date.now, setTimer 
   const qEl = field('q ', input('sim-q', 'range', { min: '0', max: '1', step: '0.05', value: '1' }));
   const bandEls = {};
   for (const k of ['theta', 'alpha', 'beta']) bandEls[k] = field(`${k} `, input(`sim-${k}`, 'range', { min: '0', max: '1', step: '0.05', value: '0.5' }));
-  const wanderEl = field(' auto-wander', input('sim-wander', 'checkbox', { checked: false }));
+  const wanderEl = field(' auto-wander', input('sim-wander', 'checkbox', { checked: demo }));
   const mindEl = field(' kirim mind', input('sim-mind', 'checkbox', { checked: true }));
   const autoBtn = doc.createElement('button');
   autoBtn.id = 'sim-auto';
@@ -44,7 +58,15 @@ export function createSim({ bus, root, doc = document, now = Date.now, setTimer 
 
   function tickMind() {
     if (st.mind) {
-      if (st.wander) { st.pos = wanderPos((now() - t0) / 1000); posEl.value = st.pos.toFixed(2); }
+      if (st.wander) {
+        const t = (now() - t0) / 1000;
+        st.pos = wanderPos(t);
+        posEl.value = st.pos.toFixed(2);
+        if (st.bandWander) {
+          Object.assign(st, wanderBands(st.pos, t));
+          for (const k of ['theta', 'alpha', 'beta']) bandEls[k].value = st[k].toFixed(2);
+        }
+      }
       bus.emit('mind', { pos: st.pos, hr: st.hr, q: st.q, theta: st.theta, alpha: st.alpha, beta: st.beta });
     }
     mindTimer = setTimer(tickMind, mindMs);
@@ -52,7 +74,7 @@ export function createSim({ bus, root, doc = document, now = Date.now, setTimer 
 
   function autoStep() {
     bus.emit('key', { code: nextAutoKey(rng), at: now(), rep: false, mods: [] });
-    autoTimer = setTimer(autoStep, nextAutoDelay(rng));
+    autoTimer = setTimer(autoStep, nextAutoDelay(rng, demo ? st.pos : null));
   }
 
   function setAuto(on) {
@@ -65,6 +87,8 @@ export function createSim({ bus, root, doc = document, now = Date.now, setTimer 
 
   autoBtn.addEventListener('click', () => setAuto(!st.auto));
   mindTimer = setTimer(tickMind, mindMs);
+  // Mode demo: ketikan pertama ditunda sebentar; halaman membangun geometrinya setelah sim dibuat, dan key yang datang lebih dulu akan gagal.
+  if (demo) { st.auto = true; autoBtn.textContent = 'berhenti'; autoTimer = setTimer(autoStep, 400); }
 
   return {
     state: st,

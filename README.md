@@ -1,8 +1,83 @@
-# TypeWave
+<h1 align="center">TypeWave</h1>
 
-Visualisasi realtime untuk konten typing + ASMR keyboard mechanical. Satu pita cahaya bereaksi pada gaya mengetik
-(WPM, kerapatan ketikan) dan kondisi otak (EEG). Halaman ditampilkan sebagai Browser Source di OBS; setiap tombol
-yang ditekan di aplikasi mana pun muncul sebagai reaksi di halaman. Spec lengkap: [TYPEWAVE_SPEC.md](TYPEWAVE_SPEC.md).
+<p align="center">
+  <b>Lihat otakmu saat mengetik.</b><br>
+  Visualisasi realtime ketikan global dan EEG (Muse) untuk OBS dan TikTok LIVE.<br>
+  <i>See your brain while you type: a realtime typing + EEG visualizer for OBS and TikTok LIVE.</i>
+</p>
+
+<p align="center">
+  <a href="https://github.com/freakandstein/typewave/actions/workflows/tests.yml"><img alt="tests" src="https://github.com/freakandstein/typewave/actions/workflows/tests.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="Lisensi MIT" src="https://img.shields.io/badge/lisensi-MIT-blue.svg"></a>
+  <a href="https://freakandstein.github.io/typewave/?lang=id"><img alt="demo langsung" src="https://img.shields.io/badge/demo-langsung-F2B24E.svg"></a>
+</p>
+
+<p align="center">
+  <a href="https://freakandstein.github.io/typewave/?lang=id"><b>Coba demo di browser</b></a>
+  (tanpa headset; ketik di keyboard-mu dan geser slider)
+  &nbsp;&middot;&nbsp; <a href="TYPEWAVE_SPEC.md">Spesifikasi</a>
+</p>
+
+<p align="center">
+  <img src="docs/media/hero.gif" width="800" alt="Pita cahaya dan ilustrasi otak berubah dari calm ke flow ke tense saat mengetik">
+</p>
+
+## Sekilas
+
+Satu pita cahaya bereaksi pada dua hal sekaligus: **ketikanmu** (setiap tombol di aplikasi mana pun) dan **kondisi otakmu** dari headset EEG Muse. Warna, bentuk gelombang, dan ilustrasi otak mengikuti kondisi tenang (calm), mengalir (flow), atau tegang (tense). Halaman dipasang sebagai Browser Source di OBS, jadi cocok untuk konten typing, ASMR keyboard mechanical, dan live TikTok.
+
+- **Dua sumber, satu gambar:** kerapatan dan irama ketikan mengatur tinggi, kecepatan, dan ketebalan pita. EEG mengatur warna, kekasaran, bentuk gelombang, dan terang tiga jenis garis di ilustrasi otak (theta, alpha, beta).
+- **Siap OBS:** bingkai horizontal 21:9 (bisa 16:9 sampai 3:1) dan vertikal 9:16 untuk TikTok. Kartu laporan sesi bisa diekspor sebagai PNG.
+- **Mandiri:** membaca Muse langsung lewat Bluetooth dengan sambung ulang otomatis, tanpa server EEG lain. Tanpa headset? Pakai demo atau simulator.
+- **Privat:** hanya kode tombol fisik yang dipakai (tidak pernah karakter), dan tidak ada ketikan yang disimpan.
+
+**In English:** TypeWave draws one ribbon of light that reacts to every keystroke on your machine (any app) and to your brain state from a Muse EEG headset. Colors, wave shape, and a brain illustration (three line groups for theta, alpha, and beta) follow calm, flow, and tense. It runs as an OBS Browser Source (horizontal or 9:16 vertical for TikTok), reads the headset over Bluetooth with automatic reconnect, and needs no other EEG server. No headset? Try the [live demo](https://freakandstein.github.io/typewave/) or run `npm run start:fake`. Only physical key codes are used, never characters, and nothing is written to disk.
+
+## Galeri
+
+<p align="center">
+  <a href="docs/media/wide-calm.png"><img src="docs/media/wide-calm.png" width="31%" alt="calm"></a>
+  <a href="docs/media/wide-flow.png"><img src="docs/media/wide-flow.png" width="31%" alt="flow"></a>
+  <a href="docs/media/wide-tense.png"><img src="docs/media/wide-tense.png" width="31%" alt="tense"></a>
+</p>
+<p align="center">
+  <a href="docs/media/tall-calm.png"><img src="docs/media/tall-calm.png" width="19%" alt="calm vertikal"></a>
+  <a href="docs/media/tall-flow.png"><img src="docs/media/tall-flow.png" width="19%" alt="flow vertikal"></a>
+  <a href="docs/media/tall-tense.png"><img src="docs/media/tall-tense.png" width="19%" alt="tense vertikal"></a>
+  <a href="docs/media/report-tall.png"><img src="docs/media/report-tall.png" width="19%" alt="kartu laporan sesi"></a>
+</p>
+<p align="center"><sub>Tenang (calm), mengalir (flow), tegang (tense) di layout horizontal dan vertikal 9:16, dan kartu laporan sesi hasil ekspor aplikasi.</sub></p>
+
+## Cara kerja
+
+```mermaid
+flowchart LR
+  K["Keyboard<br/>semua aplikasi"] -->|"tap Quartz<br/>listen-only"| B
+  M["Headset Muse<br/>Bluetooth"] --> E["Sumber EEG<br/>muselsl + LSL + DSP<br/>sambung ulang otomatis"]
+  E -->|"mind 5 Hz"| B["Bridge<br/>aiohttp :8770"]
+  B -->|WebSocket| P["Halaman<br/>OBS Browser Source"]
+```
+
+## Mulai cepat
+
+```bash
+git clone https://github.com/freakandstein/typewave && cd typewave
+npm install
+python3 -m venv .venv && .venv/bin/pip install -r bridge/requirements.txt -r eeg/requirements.txt
+npm start            # headset Muse menyala; atau npm run start:fake tanpa headset
+```
+
+Lalu buka `http://127.0.0.1:8770/`. Butuh macOS, Node 22+, dan Python 3.12+; izin dan rinciannya ada di bagian berikut.
+
+## Coba tanpa headset
+
+- **Demo online:** https://freakandstein.github.io/typewave/ (tambahkan `?lang=id` untuk label Indonesia). Halaman mengetik sendiri dan kondisi otak mengembara; ketik di keyboard-mu atau geser slider di kanan bawah.
+- **Sesi contoh (2,5 menit):** https://freakandstein.github.io/typewave/?replay=sample-session&ws=off (tekan `R` untuk kartu laporan).
+- **Di komputermu:** `npm run start:fake` (EEG palsu), atau buka `http://127.0.0.1:8770/?demo=1`.
+
+## Status
+
+Beta. Yang diuji otomatis: pemrosesan sinyal EEG, sambung ulang headset (dengan streamer dan emulator Bluetooth palsu), bridge, dan halaman (Playwright). Yang belum diuji dengan perangkat sungguhan: koneksi Bluetooth ke Muse, tampilan di OBS dan TikTok LIVE Studio, dan listener ketikan di semua aplikasi. Rinciannya ada di bagian 12 [TYPEWAVE_SPEC.md](TYPEWAVE_SPEC.md) (butir bertanda "kamu").
 
 ## Persiapan
 
@@ -96,6 +171,7 @@ Listener hanya membaca, jadi chord hotkey tetap sampai ke aplikasi yang sedang f
 | `layout` | `wide` (horizontal), `tall` (vertikal 9:16 untuk TikTok), `auto` (menurut bentuk jendela: vertikal bila lebih tinggi daripada lebar) | `wide` |
 | `fit` | `contain` (bingkai utuh di tengah jendela, sisanya bilah hitam), `fill` (memenuhi jendela, tampilan diregangkan) | `contain` |
 | `ratio` | bentuk bingkai horizontal (lebar:tinggi): `21:9`, `16:9`, `2.5:1`, `3:1`, atau angka desimal; dibatasi 16:9 sampai 3:1; hanya untuk `wide` | `21:9` (`16:9` dengan `?keyboard=1`) |
+| `demo` | `0`, `1` (simulator yang hidup sendiri: mengetik dan mengembara tanpa bridge dan tanpa headset, dengan keterangan dan tautan ke repo) | otomatis `1` bila halaman dibuka dari host selain `127.0.0.1` (mis. GitHub Pages), selain itu `0` |
 | `transparent` | `0`, `1` | `0` |
 | `privacy` | `zone`, `exact` | `zone` |
 | `sim` | `0`, `1` | `0` |
@@ -194,3 +270,7 @@ TYPEWAVE_SOAK=1 npm run test:e2e       # + soak 10 menit
 Tes sumber EEG memakai dua pengganti headset: streamer LSL palsu (`tools/fake_muse_lsl.py`: mati, crash, macet, gagal tersambung) dan emulator BLE (`test/bridge/fake_ble.py`) yang menggerakkan muselsl asli dengan aturan CoreBluetooth dan paket EEG/PPG berformat Muse. Koneksi Bluetooth ke headset sungguhan tidak bisa dites otomatis; itu butir yang perlu dicoba sendiri (spec bagian 12, butir 33).
 
 Semua konstanta tuning (warna, ukuran, kecepatan, arah pita `RIBBON_DIR` lewat `ribbon.dir`) ada di `src/config.js`.
+
+## Lisensi
+
+[MIT](LICENSE). Font Anybody memakai SIL Open Font License ([assets/fonts/OFL.txt](assets/fonts/OFL.txt)).

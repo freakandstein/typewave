@@ -162,7 +162,7 @@ Sumber input (semua menghasilkan pesan di atas):
 | `adapters/eeg_socketio.py` | `mind` dari server EEG lama; opsional (bagian 11.2) |
 | `ws.js` | Menerima pesan dari bridge ke dalam halaman |
 | `browserkeys.js` | `keydown` di halaman (`rep` dari `event.repeat`), untuk pengembangan. Aktif hanya bila `sim=1` dan bridge tidak melaporkan listener global |
-| `sim.js` | Panel dengan slider `pos`/`hr`/`q` dan level gelombang `theta`/`alpha`/`beta` (default 0,5 = netral), mode auto-wander, dan tombol "ketik otomatis" (menghasilkan `key` palsu). Aktif bila `sim=1`. Menulis `mind` hanya saat slider digerakkan atau auto-wander menyala |
+| `sim.js` | Panel dengan slider `pos`/`hr`/`q` dan level gelombang `theta`/`alpha`/`beta` (default 0,5 = netral), mode auto-wander, dan tombol "ketik otomatis" (menghasilkan `key` palsu). Aktif bila `sim=1` atau `demo=1`. Dengan `demo=1` (8.4) simulator hidup sendiri: mengetik dan mengembara (pos dan level gelombang ikut berubah seperti EEG sungguhan; tenang mengetik pelan, tegang cepat) sampai slider atau tombolnya dipakai. Menulis `mind` hanya saat slider digerakkan atau auto-wander menyala |
 | `replay.js` | `?replay=nama` memutar `replay/nama.json` (key dan mind) dengan timeline asli. Eksklusif: sumber lain dimatikan selama replay |
 | `tools/inject.py` | Mengirim `key` palsu ke bridge lewat WebSocket. Menguji bridge sampai halaman, tanpa izin macOS |
 | `tools/autotype.py` | Menembakkan tombol sungguhan lewat OS. Menguji listener sampai halaman |
@@ -314,6 +314,9 @@ Bridge juga menyajikan file statis supaya OBS memakai `http://127.0.0.1:8770/` (
 ```
 typewave/
   index.html
+  LICENSE                  MIT (font Anybody: SIL OFL di assets/fonts/OFL.txt)
+  .nojekyll                supaya GitHub Pages menyajikan berkas apa adanya (tanpa Jekyll)
+  .github/workflows/tests.yml   tes unit (node) dan Python (macOS) di GitHub Actions
   package.json             devDependencies saja (playwright) dan skrip npm (start, start:fake, eeg, bridge, test*); aplikasi tanpa dependency runtime
   README.md                izin macOS dan Bluetooth, menjalankan bridge dan sumber EEG, setup OBS, typing mode (hanya dengan server EEG lama)
   src/
@@ -346,6 +349,7 @@ typewave/
     data/
       layout-ansi75.js
       brain.js             kontur dan lipatan otak, dihasilkan tools/gen_brain.mjs
+  assets/favicon.svg       ikon halaman
   assets/fonts/
     Anybody-VF.woff2
     OFL.txt
@@ -385,6 +389,7 @@ typewave/
     unit/                  node --test (core/*, data/*)
     bridge/                unittest (keymap, relay, hello, origin, hotkey, dan seluruh paket eeg/ dan tools/start.py); fake_ble.py = emulator BLE Muse untuk muselsl asli
     e2e/                   Playwright (zero-drop, latensi, visual, fps, soak)
+  docs/media/              gambar dan GIF untuk README dan pratinjau sosial (hero.gif, wide-*.png, tall-*.png, report-*.png, social-preview.png)
   TYPEWAVE_SPEC.md
   TYPEWAVE_SPEC.v0.2.md
 ```
@@ -398,6 +403,7 @@ Tanpa bundler dan tanpa framework: ES modules polos, Canvas 2D untuk pita/bead/f
 | `layout` | `wide`, `tall`, `auto` | `wide` |
 | `fit` | `contain`, `fill` | `contain` |
 | `ratio` | `W:H` atau desimal, dijepit 16:9..3:1; hanya wide | 21:9 (16:9 dengan `keyboard=1`) |
+| `demo` | `0`, `1` | otomatis `1` bila halaman dibuka dari host selain loopback tanpa `ws` dan `replay` (mis. GitHub Pages), selain itu `0` |
 | `transparent` | `0`, `1` | `0` |
 | `privacy` | `zone`, `exact` | `zone` |
 | `sim` | `0`, `1` | `0` |
@@ -414,6 +420,16 @@ Tanpa bundler dan tanpa framework: ES modules polos, Canvas 2D untuk pita/bead/f
 Browser Source: URL `http://127.0.0.1:8770/?layout=wide`, lebar 1920, tinggi 823 (bingkai 21:9; 1080 dengan `&ratio=16:9`, 640 dengan `&ratio=3:1`), FPS 60, "Control audio via OBS" mati. Opsi "Shutdown source when not visible" dimatikan supaya statistik sesi tidak ter-reset. Browser Source tidak menerima keyboard, jadi kartu laporan dipicu hotkey global (bagian 7).
 
 ---
+
+### 8.4 Demo online (GitHub Pages)
+
+Aplikasi tanpa bundler dan semua alamat berkasnya relatif, jadi seluruh folder proyek bisa disajikan statis (GitHub Pages dari cabang `master`, folder akar; `.nojekyll` mencegah Jekyll). Alamat: `https://freakandstein.github.io/typewave/`.
+
+- Halaman yang dibuka dari host selain loopback (`127.0.0.1`, `localhost`, `[::1]`) tidak mungkin punya bridge, jadi otomatis masuk mode demo (`demo=1`): `sim=1` dan `ws` mati. Simulator langsung mengetik sendiri dan pos serta level gelombang mengembara; pengunjung bisa mengetik di keyboard-nya atau menggeser slider. Keterangan kecil dan tautan ke repo tampil di kiri bawah (`lang=id` untuk bahasa Indonesia).
+- `?demo=0` mematikannya; `?ws=` atau `?replay=` yang eksplisit juga menonaktifkan demo otomatis. `?replay=sample-session&ws=off` memutar sesi contoh (tekan `R` untuk kartu laporan).
+- Berkas statis tidak punya `/status`, `/ws`, atau hotkey; semua fitur yang butuh bridge (ketikan global, EEG, pause, laporan lewat hotkey) hanya ada secara lokal.
+- Tag Open Graph dan Twitter di `index.html` (gambar `docs/media/social-preview.png`) membuat pratinjau saat tautan demo dibagikan.
+
 
 ## 9. Privasi dan keamanan
 
@@ -575,6 +591,8 @@ Satu daftar, tanpa fase. Semua butir harus terpenuhi. Penanda: **[otomatis]** di
 
 35. [otomatis] Tanpa `?layout=` halaman horizontal, dan di jendela mana pun (potret, sangat lebar, persegi) scene digambar di panggung wide 21:9 atau tall 9:16 yang utuh dan terpusat dengan bilah hitam di sisanya; HUD, otak, dan kartu laporan berada di dalam panggung dan tidak saling menabrak; `?fit=fill` mengembalikan perilaku memenuhi jendela; `?ratio=16:9` mengembalikan bingkai dan tata letak lama persis; untuk setiap `?ratio=` dari 16:9 sampai 3:1 pita selalu muat di dalam bingkai (tidak keluar dari bawah, tidak menabrak otak) dan bead punya jarak jatuh; pada jendela yang memang berbentuk panggung hasilnya tanpa bilah.
 
+36. [otomatis] Demo online (8.4): halaman yang dibuka dari host selain loopback dan dari subfolder (diuji lewat host palsu `demo.test/typewave/`) otomatis menjadi demo; semua berkas termuat lewat alamat relatif; tanpa WebSocket dan tanpa error konsol; simulator mengetik sendiri dan pos serta level gelombang mengembara; pengunjung bisa mengetik di keyboard-nya dan tombol berhenti menghentikan ketikan otomatis; keterangan tampil dan menaut ke repo. [kamu] Tampilan di GitHub Pages sungguhan dan pratinjau tautan di aplikasi pesan.
+
 ---
 
 ## 13. Rencana tes
@@ -588,6 +606,7 @@ Satu daftar, tanpa fase. Semua butir harus terpenuhi. Penanda: **[otomatis]** di
 - **EEG mandiri (Python `unittest`):** `dsp` (sinyal sintetis 6, 10, 20 Hz; kualitas kanal; EMG; listrik 50 Hz; artefak; detak jantung), `state` (normalisasi, penghalusan, ambang adaptif, warm-up, kebasian), `supervisor` (jam dan penantian palsu: backoff, reset, pembatalan), `stream` (proses dan LSL sungguhan dengan `tools/fake_muse_lsl.py`: mati, crash, stall, gagal mulai, lambat, dibatalkan, yatim), `scan` (cache, filter nama), `bridge_link` (bridge sungguhan dimatikan lalu dinyalakan), `runner` (end-to-end), CLI (proses `python -m eeg` sungguhan terhadap bridge sungguhan: SIGINT, SIGTERM, streamer dibunuh dari luar, streamer yang selalu gagal), dan peluncur.
 - **muselsl asli di bawah emulator BLE (`test/bridge/test_eeg_muselsl.py`, `fake_ble.py`):** tes dengan streamer LSL palsu tidak bisa menangkap kelakuan muselsl sendiri, jadi kode muselsl sungguhan dijalankan di bawah klien bleak palsu: karakterisasi dua kelakuan muselsl 2.5.0 yang dikerjakan `muse_streamer.py`, lalu rantai penuh sampai ke `MuseSession` dan CLI. Emulator mengikuti sumber bleak dan muselsl yang terpasang; ia bukan bukti perilaku radio atau CoreBluetooth sungguhan.
 - **EEG mandiri di halaman (Playwright + bridge + `python -m eeg --fake`):** level gelombang bergerak; streamer dibunuh, halaman jatuh ke noSignal lalu pulih sendiri.
+- **Demo online (Playwright + bridge):** `?demo=1` hidup sendiri, pengunjung bisa mengetik, dan skenario host palsu `demo.test/typewave/` yang meniru GitHub Pages (permintaan selain subfolder dijawab 404, jadi alamat absolut akan ketahuan).
 - **Manual (kamu):** satu sesi ketik nyata di OBS dan TikTok LIVE Studio; headset sungguhan, termasuk mematikan dan menyalakan lagi headset.
 
 ---

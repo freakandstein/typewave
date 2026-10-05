@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSim, wanderPos, nextAutoKey, nextAutoDelay } from '../../src/input/sim.js';
+import { createSim, wanderPos, wanderBands, nextAutoKey, nextAutoDelay } from '../../src/input/sim.js';
 import { createBus } from '../../src/core/bus.js';
 
 function fakeDoc() {
@@ -45,6 +45,51 @@ test('wanderPos selalu 0..1; nextAutoKey dan nextAutoDelay deterministik terhada
   assert.equal(nextAutoKey(() => 0.5), 'KeyK');
   assert.equal(nextAutoDelay(() => 0.5), 140);
   assert.ok(nextAutoDelay(() => 0.01) >= 400);
+});
+
+test('wanderBands: level 0..1 dan mengikuti pos seperti EEG sungguhan (tenang: theta dan alpha tinggi; tegang: beta tinggi)', () => {
+  for (let s = 0; s < 400; s += 3) for (const p of [0, 0.3, 0.7, 1]) for (const v of Object.values(wanderBands(p, s))) assert.ok(v >= 0 && v <= 1, `${p} ${s} ${v}`);
+  const calm = wanderBands(0.05, 10);
+  const tense = wanderBands(0.95, 10);
+  assert.ok(calm.theta > tense.theta + 0.4 && calm.alpha > tense.alpha + 0.3 && tense.beta > calm.beta + 0.5, JSON.stringify({ calm, tense }));
+});
+
+test('nextAutoDelay mengikuti pos bila diberikan: tenang mengetik pelan, tegang cepat; tanpa pos tetap seperti dulu', () => {
+  assert.equal(nextAutoDelay(() => 0.5), 140);
+  assert.ok(nextAutoDelay(() => 0.5, 0) > 2 * nextAutoDelay(() => 0.5, 1));
+});
+
+test('mode demo: langsung mengetik sendiri dan mind mengembara (pos dan level gelombang bergerak); slider mengambil alih; tombol menghentikan ketikan', () => {
+  const doc = fakeDoc(); const h = harness(); const bus = createBus(); const keys = []; const minds = [];
+  bus.on('key', (k) => keys.push(k)); bus.on('mind', (m) => minds.push(m));
+  const sim = createSim({ bus, root: doc.createElement('div'), doc, now: h.now, setTimer: h.setTimer, clearTimer: h.clearTimer, rng: () => 0.5, demo: true });
+  assert.equal(sim.state.auto, true); assert.equal(sim.state.wander, true);
+  assert.equal(doc.byId('sim-wander').checked, true); assert.equal(doc.byId('sim-auto').textContent, 'berhenti');
+  h.advance(30000);
+  assert.ok(keys.length > 30, `ketikan otomatis: ${keys.length}`);
+  const range = (f) => Math.max(...minds.map(f)) - Math.min(...minds.map(f));
+  for (const [name, f] of [['pos', (m) => m.pos], ['theta', (m) => m.theta], ['alpha', (m) => m.alpha], ['beta', (m) => m.beta]]) assert.ok(range(f) > 0.15, `${name} harus bergerak: ${range(f)}`);
+  const pos = doc.byId('sim-pos'); pos.value = '0.2'; pos.fire('input');
+  h.advance(200);
+  const frozen = minds.at(-1);
+  h.advance(5000);
+  const now = minds.at(-1);
+  assert.deepEqual([now.pos, now.theta, now.alpha, now.beta], [frozen.pos, frozen.theta, frozen.alpha, frozen.beta], 'slider mengambil alih: tidak mengembara lagi');
+  doc.byId('sim-auto').fire('click');
+  const n = keys.length;
+  h.advance(2000);
+  assert.equal(keys.length, n);
+  sim.stop();
+});
+
+test('tanpa demo panel tetap seperti dulu: tidak mengembara dan tidak mengetik sendiri', () => {
+  const doc = fakeDoc(); const h = harness(); const bus = createBus(); const keys = []; const minds = [];
+  bus.on('key', (k) => keys.push(k)); bus.on('mind', (m) => minds.push(m));
+  const sim = createSim({ bus, root: doc.createElement('div'), doc, now: h.now, setTimer: h.setTimer, clearTimer: h.clearTimer, rng: () => 0.5 });
+  h.advance(20000);
+  assert.equal(keys.length, 0); assert.equal(sim.state.wander, false);
+  assert.ok(minds.every((m) => m.pos === 0.5 && m.theta === 0.5 && m.beta === 0.5));
+  sim.stop();
 });
 
 test('panel: mind tiap 200 ms mengikuti slider; mind bisa dimatikan (uji noSignal)', () => {

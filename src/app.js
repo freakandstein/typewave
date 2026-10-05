@@ -18,6 +18,7 @@ import { createBrain, sparkBrain, stepBrain, drawBrain, brainStats, brainRect } 
 import { createHud } from './render/hud.js';
 import { buildReport, createReportView, exportPng } from './render/report.js';
 import { createStats, recordKey, percentile } from './debug.js';
+import { labelFor } from './core/text.js';
 
 const PERF_N = 600;
 const rgb = (c, f = 1) => `rgb(${clamp(c[0] * f, 0, 255) | 0},${clamp(c[1] * f, 0, 255) | 0},${clamp(c[2] * f, 0, 255) | 0})`;
@@ -132,7 +133,7 @@ export function start({ canvas, hudRoot, reportCanvas, panel, win }) {
 
   if (params.ws && !exclusive) createWsSource({ bus, url: params.ws, onState: (s) => { stats.wsConnected = s.connected; } });
   if (params.sim && !exclusive) {
-    sim = createSim({ bus, root: panel, doc });
+    sim = createSim({ bus, root: panel, doc, demo: params.demo });
     createBrowserKeys({ bus, win, enabled: () => !live.keysFromBridge });
   }
   if (params.replay) {
@@ -167,6 +168,8 @@ export function start({ canvas, hudRoot, reportCanvas, panel, win }) {
     }
   }
   if (params.sim || params.controls) panel.classList.add('on');
+  const hint = doc.getElementById('demo-hint');
+  if (params.demo && hint) { hint.querySelector('span').textContent = labelFor('demoHint', params.lang); hint.hidden = false; }
 
   // --- gambar ----------------------------------------------------------------------
   function drawSweeps(now, ink) {

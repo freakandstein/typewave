@@ -1,6 +1,10 @@
 {
   "name": "typewave",
   "version": "0.3.0",
+  "description": "Realtime typing + EEG (Muse) visualizer for OBS and TikTok LIVE",
+  "license": "MIT",
+  "homepage": "https://freakandstein.github.io/typewave/",
+  "repository": { "type": "git", "url": "git+https://github.com/freakandstein/typewave.git" },
   "private": true,
   "type": "module",
   "scripts": {

@@ -2,6 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { labelFor, typeAxes, formatTimer, formatDur } from '../../src/core/text.js';
 
+test('label demoHint ada di en dan id', () => {
+  assert.match(labelFor('demoHint', 'en'), /demo/i);
+  assert.match(labelFor('demoHint', 'id'), /demo/i);
+  assert.notEqual(labelFor('demoHint', 'en'), labelFor('demoHint', 'id'));
+});
+
 test('label en dan id', () => {
   assert.equal(labelFor('calm', 'en'), 'calm');
   assert.equal(labelFor('flow', 'id'), 'mengalir');

@@ -4,7 +4,7 @@ import { parseParams, resolveLayout } from '../../src/params.js';
 
 test('default sesuai spec 8.2', () => {
   assert.deepEqual(parseParams(''), {
-    layout: 'wide', fit: 'contain', ratio: null, transparent: false, privacy: 'zone', sim: false, replay: null, lang: 'en',
+    layout: 'wide', fit: 'contain', ratio: null, demo: false, transparent: false, privacy: 'zone', sim: false, replay: null, lang: 'en',
     ws: 'ws://127.0.0.1:8770/ws', debug: false, controls: false, keyboard: false, brain: true,
   });
 });
@@ -30,6 +30,20 @@ test('ws default mengikuti origin halaman (bridge di port mana pun); file: dan w
   assert.equal(parseParams('', { protocol: 'file:', host: '' }).ws, 'ws://127.0.0.1:8770/ws');
   assert.equal(parseParams('?ws=ws://127.0.0.1:1/ws', { protocol: 'http:', host: 'x:2' }).ws, 'ws://127.0.0.1:1/ws');
   assert.equal(parseParams('?ws=off', { protocol: 'http:', host: 'x:2' }).ws, null);
+});
+
+test('demo: dibuka dari host selain loopback (mis. GitHub Pages) otomatis mode demo tanpa bridge; ?demo=0 mematikan, ?demo=1 menyalakan di mana pun', () => {
+  const PAGES = { protocol: 'https:', host: 'freakandstein.github.io' };
+  const p = parseParams('', PAGES);
+  assert.equal(p.demo, true); assert.equal(p.sim, true); assert.equal(p.ws, null);
+  for (const host of ['127.0.0.1:8770', 'localhost:8770', '[::1]:8770']) assert.equal(parseParams('', { protocol: 'http:', host }).demo, false, host);
+  assert.equal(parseParams('', { protocol: 'file:', host: '' }).demo, false);
+  const off = parseParams('?demo=0', PAGES);
+  assert.equal(off.demo, false); assert.equal(off.sim, false); assert.equal(off.ws, 'wss://freakandstein.github.io/ws');
+  const local = parseParams('?demo=1', { protocol: 'http:', host: '127.0.0.1:8770' });
+  assert.equal(local.demo, true); assert.equal(local.sim, true); assert.equal(local.ws, null);
+  assert.equal(parseParams('?ws=ws://127.0.0.1:8770/ws', PAGES).demo, false, 'ws eksplisit berarti ada bridge');
+  assert.equal(parseParams('?replay=sample-session', PAGES).demo, false);
 });
 
 test('ratio: "21:9", "3:1", dan desimal dibaca; yang tidak valid menjadi null (bawaan dipakai)', () => {

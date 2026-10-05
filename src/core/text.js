@@ -3,8 +3,8 @@ import { CONFIG } from '../config.js';
 import { clamp, lerp } from './color.js';
 
 export const LABELS = {
-  en: { calm: 'calm', flow: 'flow', tense: 'tense', noSignal: 'no signal', paused: 'paused', wpm: 'wpm', bpm: 'bpm' },
-  id: { calm: 'tenang', flow: 'mengalir', tense: 'tegang', noSignal: 'tanpa sinyal', paused: 'jeda', wpm: 'wpm', bpm: 'bpm' },
+  en: { calm: 'calm', flow: 'flow', tense: 'tense', noSignal: 'no signal', paused: 'paused', wpm: 'wpm', bpm: 'bpm', demoHint: 'Demo without a headset. Type on your keyboard and drag the sliders at the bottom right.' },
+  id: { calm: 'tenang', flow: 'mengalir', tense: 'tegang', noSignal: 'tanpa sinyal', paused: 'jeda', wpm: 'wpm', bpm: 'bpm', demoHint: 'Demo tanpa headset. Ketik di keyboard-mu dan geser slider di kanan bawah.' },
 };
 
 export const labelFor = (key, lang = 'en') => (LABELS[lang] || LABELS.en)[key];

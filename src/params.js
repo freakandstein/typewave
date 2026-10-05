@@ -18,6 +18,11 @@ export function resolveLayout(layout, w, h) {
   return h > w ? 'tall' : 'wide';
 }
 
+// Host selain loopback (mis. GitHub Pages) tidak mungkin punya bridge: halaman otomatis menjadi demo (simulator, tanpa WebSocket).
+const LOOPBACK = new Set(['127.0.0.1', 'localhost', '[::1]', '::1']);
+const hostOf = (loc) => String((loc && loc.host) || '').replace(/:\d+$/, '');
+const isRemote = (loc) => { const h = hostOf(loc); return !!h && !LOOPBACK.has(h) && loc.protocol !== 'file:'; };
+
 const wsFromLocation = (loc) => (loc && loc.host && (loc.protocol === 'http:' || loc.protocol === 'https:')
   ? `${loc.protocol === 'https:' ? 'wss' : 'ws'}://${loc.host}/ws`
   : CONFIG.ws.url);
@@ -27,16 +32,19 @@ export function parseParams(search, loc = null) {
   const q = new URLSearchParams(search);
   const pick = (name, allowed, d) => (allowed.includes(q.get(name)) ? q.get(name) : d);
   const ws = q.get('ws');
+  const demoQ = q.get('demo');
+  const demo = demoQ === '1' || demoQ === 'true' ? true : demoQ === '0' || demoQ === 'false' ? false : isRemote(loc) && !q.has('ws') && !q.get('replay');
   return {
     layout: pick('layout', ['wide', 'tall', 'auto'], 'wide'),  // default horizontal; auto memilih menurut bentuk jendela, tall untuk 9:16
     fit: pick('fit', ['contain', 'fill'], 'contain'),  // contain: bingkai utuh di tengah jendela; fill: memenuhi jendela
     ratio: parseRatio(q.get('ratio')),  // bentuk bingkai wide (lebar:tinggi); null = bawaan 21:9
     transparent: bool(q.get('transparent')),
     privacy: pick('privacy', ['zone', 'exact'], 'zone'),
-    sim: bool(q.get('sim')),
+    sim: bool(q.get('sim')) || demo,
+    demo,  // simulator yang hidup sendiri (mengetik dan mengembara) tanpa bridge dan tanpa headset
     replay: (q.get('replay') || '').replace(/[^A-Za-z0-9._-]/g, '') || null,
     lang: pick('lang', ['en', 'id'], 'en'),
-    ws: ws === 'off' ? null : ws || wsFromLocation(loc),
+    ws: demo || ws === 'off' ? null : ws || wsFromLocation(loc),
     debug: bool(q.get('debug')),
     controls: bool(q.get('controls')),
     keyboard: bool(q.get('keyboard')),

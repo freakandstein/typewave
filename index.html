@@ -4,6 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TypeWave</title>
+<meta name="description" content="TypeWave: realtime typing + brainwave (EEG) visualizer for OBS and TikTok LIVE. Try the live demo, no headset needed.">
+<meta name="theme-color" content="#2D2112">
+<meta property="og:type" content="website">
+<meta property="og:title" content="TypeWave">
+<meta property="og:description" content="See your brain while you type: a realtime typing + EEG visualizer for OBS and TikTok LIVE.">
+<meta property="og:url" content="https://freakandstein.github.io/typewave/">
+<meta property="og:image" content="https://freakandstein.github.io/typewave/docs/media/social-preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <style>
   @font-face {
     font-family: 'Anybody';
@@ -34,6 +43,8 @@
   .layout-tall .hud-wpm { left: 6%; top: calc(11% + 104px * var(--k)); }
   .layout-tall .hud-small { left: 6%; top: calc(11% + 184px * var(--k)); }
   .layout-tall .hud-status { left: 6%; top: calc(11% + 232px * var(--k)); }
+  #demo-hint { position: fixed; left: 12px; bottom: 8px; margin: 0; max-width: calc(100vw - 330px); font: 12px/1.4 system-ui, sans-serif; color: rgba(236, 231, 220, 0.7); z-index: 4; pointer-events: none; }
+  #demo-hint a { color: inherit; pointer-events: auto; }
   #panel { position: fixed; right: 12px; bottom: 12px; z-index: 5; display: none; font: 12px system-ui, sans-serif;
            color: #ECE7DC; background: rgba(0, 0, 0, 0.6); padding: 10px 12px; border-radius: 8px; max-width: 280px; }
   #panel.on { display: block; }
@@ -48,6 +59,7 @@
   <div id="hud"></div>
   <canvas id="report"></canvas>
 </div>
+<p id="demo-hint" hidden><span></span> <a href="https://github.com/freakandstein/typewave" target="_blank" rel="noopener">github.com/freakandstein/typewave</a></p>
 <div id="panel"></div>
 <script type="module" src="src/main.js"></script>
 </body>
