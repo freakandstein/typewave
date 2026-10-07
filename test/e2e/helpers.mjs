@@ -39,7 +39,7 @@ export async function startBridge(port, { listener = false } = {}) {
   return {
     proc, port, base,
     logs: () => out,
-    stop: () => new Promise((resolve) => { if (proc.exitCode !== null) return resolve(); proc.once('exit', resolve); proc.kill(); }),
+    stop: () => new Promise((resolve) => { if (proc.exitCode !== null || proc.signalCode !== null) return resolve(); proc.once('exit', resolve); proc.kill(); }),  // signalCode: sudah mati karena sinyal
   };
 }
 

@@ -30,6 +30,14 @@ export function createWsSource({ bus, url, onState, WebSocketImpl = globalThis.W
         bus.emit('mind', mind);
         break;
       }
+      case 'headset':
+        if (typeof m.state === 'string') {
+          const h = { state: m.state };
+          if (m.attempt !== undefined) h.attempt = m.attempt;
+          if (m.contact !== undefined) h.contact = m.contact;
+          bus.emit('headset', h);
+        }
+        break;
       case 'ctl':
         bus.emit('ctl', m);
         break;

@@ -16,3 +16,13 @@ test('config beku dan skala memakai sisi pendek', () => {
   assert.equal(scaleFor(1080, 1920), 1);
   assert.equal(scaleFor(960, 540), 0.5);
 });
+
+test('sumbu huruf HUD: satu nilai tetap (bukan rentang) di dalam rentang font Anybody (wdth 50..150, wght 100..900)', () => {
+  const { hudWdth, hudWght } = CONFIG.type;
+  for (const [v, lo, hi] of [[hudWdth, 50, 150], [hudWght, 100, 900]]) {
+    assert.equal(typeof v, 'number');
+    assert.ok(v >= lo && v <= hi, `${v} di luar ${lo}..${hi}`);
+  }
+  assert.equal(CONFIG.type.wdth, undefined, 'rentang lama (mengikuti kondisi otak) sudah dihapus');
+  assert.equal(CONFIG.type.wght, undefined);
+});

@@ -1,22 +1,32 @@
-// Teks: label en/id, sumbu font (spec 3.2), format timer dan durasi.
-import { CONFIG } from '../config.js';
-import { clamp, lerp } from './color.js';
+// Teks: label en/id (termasuk status headset) dan format durasi.
 
 export const LABELS = {
-  en: { calm: 'calm', flow: 'flow', tense: 'tense', noSignal: 'no signal', paused: 'paused', wpm: 'wpm', bpm: 'bpm', demoHint: 'Demo without a headset. Type on your keyboard and drag the sliders at the bottom right.' },
-  id: { calm: 'tenang', flow: 'mengalir', tense: 'tegang', noSignal: 'tanpa sinyal', paused: 'jeda', wpm: 'wpm', bpm: 'bpm', demoHint: 'Demo tanpa headset. Ketik di keyboard-mu dan geser slider di kanan bawah.' },
+  en: { calm: 'calm', flow: 'flow', tense: 'tense', noSignal: 'no signal', paused: 'paused', wpm: 'wpm', bpm: 'bpm',
+    bridgeOff: 'bridge disconnected', eegOff: 'EEG source offline', connecting: 'connecting to headset', reconnecting: 'reconnecting, attempt {n}',
+    warming: 'warming up', checkSensors: 'check the sensors', demoHint: 'Demo without a headset. Type on your keyboard and drag the sliders at the bottom right.' },
+  id: { calm: 'tenang', flow: 'mengalir', tense: 'tegang', noSignal: 'tanpa sinyal', paused: 'jeda', wpm: 'wpm', bpm: 'bpm',
+    bridgeOff: 'bridge terputus', eegOff: 'sumber EEG terputus', connecting: 'menyambung ke headset', reconnecting: 'menyambung ulang, percobaan {n}',
+    warming: 'menyiapkan sinyal', checkSensors: 'cek sensor', demoHint: 'Demo tanpa headset. Ketik di keyboard-mu dan geser slider di kanan bawah.' },
 };
 
 export const labelFor = (key, lang = 'en') => (LABELS[lang] || LABELS.en)[key];
 
-export function typeAxes(pos) {
-  const p = clamp(pos);
-  return { wdth: lerp(CONFIG.type.wdth[0], CONFIG.type.wdth[1], p), wght: lerp(CONFIG.type.wght[0], CONFIG.type.wght[1], p) };
-}
-
-export function formatTimer(ms) {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+// Teks status di HUD dari status headset (src/core/headset.js) dan apakah mind sedang tidak mengalir. Tanpa info headset: seperti dulu.
+// Putus, menyambung, dan bridge terputus tampil segera (data terakhir bisa saja belum basi); "connected" hanya bicara selama belum ada mind.
+export function headsetText(h, noSignal, lang = 'en') {
+  switch (h ? h.state : 'unknown') {
+    case 'bridge': return labelFor('bridgeOff', lang);
+    case 'offline': return labelFor('eegOff', lang);
+    case 'connecting': return labelFor('connecting', lang);
+    case 'reconnecting': return labelFor('reconnecting', lang).replace('{n}', String(h.attempt));
+    case 'connected':
+      // Kontak segar dan ada sensor yang terbaca sementara mind mengalir: tidak ada yang perlu dikatakan. Belum ada kontak segar (baru tersambung,
+      // mind lama belum basi 5 detik) berarti sinyal baru disiapkan; tanpa satu pun sensor hijau (DSP butuh minimal satu kanal bagus untuk mind)
+      // langsung "cek sensor" tanpa menunggu mind lama basi.
+      if (h.contact && h.contact.every((l) => l !== 'good')) return labelFor('checkSensors', lang);
+      return !noSignal && h.contact ? '' : labelFor('warming', lang);
+    default: return noSignal ? labelFor('noSignal', lang) : '';
+  }
 }
 
 export function formatDur(totalSec, lang = 'en') {

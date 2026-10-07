@@ -1,8 +1,14 @@
-// HUD sebagai elemen DOM di atas kanvas (spec 3.2 dan 6.3): Canvas 2D tidak bisa mengatur sumbu wdth secara kontinu.
-import { typeAxes, labelFor, formatTimer } from '../core/text.js';
+// HUD sebagai elemen DOM di atas kanvas (spec 3.2 dan 6.3): teks memakai font variabel lewat font-variation-settings, yang tidak ada di Canvas 2D.
+import { CONFIG } from '../config.js';
+import { labelFor, headsetText } from '../core/text.js';
+
+const SENSORS = ['tp9', 'af7', 'af8', 'tp10']; // urutan sama dengan kontak di pesan headset
+// Ikon hati untuk detak jantung: SVG statis (tidak berdenyut), berwarna lewat CSS (currentColor).
+const HEART_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 20.6C6.6 16.4 3 13.2 3 9.1 3 6.3 5.1 4.2 7.7 4.2c1.8 0 3.4.9 4.3 2.4.9-1.5 2.5-2.4 4.3-2.4C18.9 4.2 21 6.3 21 9.1c0 4.1-3.6 7.3-9 11.5z"/></svg>';
 
 export function createHud(root, doc = document) {
   root.textContent = '';
+  root.style.fontVariationSettings = `"wdth" ${CONFIG.type.hudWdth}, "wght" ${CONFIG.type.hudWght}`; // tetap: semua teks HUD mewarisinya
   const mk = (cls, id) => { const d = doc.createElement('div'); d.className = cls; d.id = id; root.appendChild(d); return d; };
   const el = {
     state: mk('hud-state', 'hud-state'),
@@ -13,11 +19,21 @@ export function createHud(root, doc = document) {
   };
   const hr = doc.createElement('span');
   hr.id = 'hud-hr';
-  const timer = doc.createElement('span');
-  timer.id = 'hud-timer';
-  el.small.append(hr, timer);
+  // Kepala dilihat dari atas dengan empat titik sensor Muse: dua di dahi (AF7, AF8) dan dua di belakang telinga (TP9, TP10). Bentuknya CSS di index.html.
+  const contact = doc.createElement('div');
+  contact.id = 'hud-contact';
+  contact.className = 'hud-contact';
+  const dots = SENSORS.map((name) => { const d = doc.createElement('i'); d.className = `dot ${name}`; contact.appendChild(d); return d; });
+  el.contact = contact;
+  const heart = doc.createElement('i');
+  heart.id = 'hud-heart';
+  heart.className = 'hud-heart';
+  heart.innerHTML = HEART_SVG;
+  // Kanan atas satu baris pendek: titik sensor, ikon hati, lalu HR. Tanpa timer sesi (permintaan user: tidak perlu, dan angkanya yang berganti tiap detik terasa bergoyang).
+  Object.assign(el, { hr, heart });
+  el.small.append(contact, heart, hr);
 
-  const last = { wdth: -1, wght: -1, state: null, wpm: null, hr: null, timer: null, status: null, wpmOn: null, debug: null };
+  const last = { state: null, wpm: null, hr: null, status: null, wpmOn: null, debug: null, levels: null, contactOn: null, heartOn: null };
   const set = (node, key, text) => { if (last[key] !== text) { last[key] = text; node.textContent = text; } };
 
   return {
@@ -28,23 +44,20 @@ export function createHud(root, doc = document) {
       root.style.setProperty('--k', String(k));
     },
     update(v) {
-      const ax = typeAxes(v.pos);
-      if (Math.abs(ax.wdth - last.wdth) >= 0.5 || Math.abs(ax.wght - last.wght) >= 0.5) {
-        last.wdth = ax.wdth;
-        last.wght = ax.wght;
-        const fv = `"wdth" ${ax.wdth.toFixed(1)}, "wght" ${ax.wght.toFixed(1)}`;
-        el.state.style.fontVariationSettings = fv;
-        el.wpm.style.fontVariationSettings = fv;
-        el.small.style.fontVariationSettings = fv;
-        el.status.style.fontVariationSettings = fv;
-      }
       set(el.state, 'state', v.word ? labelFor(v.word, v.lang) : '');
       set(el.wpm, 'wpm', `${Math.round(v.wpm)} ${labelFor('wpm', v.lang)}`);
       if (v.wpmOn !== last.wpmOn) { last.wpmOn = v.wpmOn; el.wpm.classList.toggle('on', !!v.wpmOn); }
-      set(hr, 'hr', v.hr === null || v.hr === undefined ? '' : `${Math.round(v.hr)} ${labelFor('bpm', v.lang)}`);
-      set(timer, 'timer', formatTimer(v.timerMs));
-      const status = [v.noSignal ? labelFor('noSignal', v.lang) : '', v.paused ? labelFor('paused', v.lang) : ''].filter(Boolean).join('  ');
+      const hasHr = v.hr !== null && v.hr !== undefined;
+      set(hr, 'hr', hasHr ? `${Math.round(v.hr)} ${labelFor('bpm', v.lang)}` : '');
+      if (hasHr !== last.heartOn) { last.heartOn = hasHr; heart.classList.toggle('on', hasHr); }
+      const status = [headsetText(v.headset, v.noSignal, v.lang), v.paused ? labelFor('paused', v.lang) : ''].filter(Boolean).join('  ');
       set(el.status, 'status', status);
+      const lv = v.contact || null; // level tiap sensor ('good' | 'fair' | 'poor') atau null: titik hanya tampil saat ada kontak segar
+      if (lv) {
+        const key = lv.join(',');
+        if (key !== last.levels) { last.levels = key; lv.forEach((l, i) => { dots[i].className = `dot ${SENSORS[i]} ${l}`; }); }
+      }
+      if (!!lv !== last.contactOn) { last.contactOn = !!lv; contact.classList.toggle('on', !!lv); }
       if (v.debugText !== undefined && v.debugText !== null) set(el.debug, 'debug', v.debugText);
     },
   };

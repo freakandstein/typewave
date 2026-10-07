@@ -13,7 +13,7 @@ function setup() {
   FakeWS.instances = [];
   const bus = createBus();
   const events = [];
-  for (const t of ['key', 'mind', 'ctl', 'hello']) bus.on(t, (e) => events.push([t, e]));
+  for (const t of ['key', 'mind', 'ctl', 'hello', 'headset']) bus.on(t, (e) => events.push([t, e]));
   const delays = [];
   const timers = [];
   const src = createWsSource({
@@ -79,4 +79,16 @@ test('mind dengan level gelombang meneruskan theta, alpha, beta; tanpa level ben
   assert.deepEqual(events.at(-1), ['mind', { pos: 0.4, hr: 70, q: 0.9, theta: 0.6, alpha: 0.2, beta: 0.9 }]);
   ws().onmessage({ data: '{"t":"mind","pos":0.4,"hr":70,"q":0.9}' });
   assert.deepEqual(events.at(-1), ['mind', { pos: 0.4, hr: 70, q: 0.9 }]);
+});
+
+test('headset: status dan kontak diteruskan apa adanya; tanpa status yang berupa teks diabaikan', () => {
+  const { events, ws } = setup();
+  ws().onopen();
+  ws().onmessage({ data: '{"t":"headset","state":"connected","contact":[1,0.5,0.2,0.9]}' });
+  assert.deepEqual(events.at(-1), ['headset', { state: 'connected', contact: [1, 0.5, 0.2, 0.9] }]);
+  ws().onmessage({ data: '{"t":"headset","state":"reconnecting","attempt":2}' });
+  assert.deepEqual(events.at(-1), ['headset', { state: 'reconnecting', attempt: 2 }]);
+  const n = events.length;
+  for (const bad of ['{"t":"headset"}', '{"t":"headset","state":7}', '{"t":"headset","state":null}']) ws().onmessage({ data: bad });
+  assert.equal(events.length, n);
 });

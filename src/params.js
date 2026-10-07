@@ -49,5 +49,6 @@ export function parseParams(search, loc = null) {
     controls: bool(q.get('controls')),
     keyboard: bool(q.get('keyboard')),
     brain: q.get('brain') !== '0' && q.get('brain') !== 'false',
+    contact: q.get('contact') !== '0' && q.get('contact') !== 'false',  // titik sensor di HUD saat headset tersambung
   };
 }

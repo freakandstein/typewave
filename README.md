@@ -29,9 +29,10 @@ Satu pita cahaya bereaksi pada dua hal sekaligus: **ketikanmu** (setiap tombol d
 - **Dua sumber, satu gambar:** kerapatan dan irama ketikan mengatur tinggi, kecepatan, dan ketebalan pita. EEG mengatur warna, kekasaran, bentuk gelombang, dan terang tiga jenis garis di ilustrasi otak (theta, alpha, beta).
 - **Siap OBS:** bingkai horizontal 21:9 (bisa 16:9 sampai 3:1) dan vertikal 9:16 untuk TikTok. Kartu laporan sesi bisa diekspor sebagai PNG.
 - **Mandiri:** membaca Muse langsung lewat Bluetooth dengan sambung ulang otomatis, tanpa server EEG lain. Tanpa headset? Pakai demo atau simulator.
+- **Status headset terlihat:** halaman menulis apa yang sedang terjadi (menyambung, menyambung ulang percobaan ke-N, menyiapkan sinyal, cek sensor), dan empat titik kecil menunjukkan tiap sensor Muse: hijau = menempel baik, kuning = kurang bagus, cincin merah = buruk. Berguna saat memasang headset dan saat sambungan putus.
 - **Privat:** hanya kode tombol fisik yang dipakai (tidak pernah karakter), dan tidak ada ketikan yang disimpan.
 
-**In English:** TypeWave draws one ribbon of light that reacts to every keystroke on your machine (any app) and to your brain state from a Muse EEG headset. Colors, wave shape, and a brain illustration (three line groups for theta, alpha, and beta) follow calm, flow, and tense. It runs as an OBS Browser Source (horizontal or 9:16 vertical for TikTok), reads the headset over Bluetooth with automatic reconnect, and needs no other EEG server. No headset? Try the [live demo](https://freakandstein.github.io/typewave/) or run `npm run start:fake`. Only physical key codes are used, never characters, and nothing is written to disk.
+**In English:** TypeWave draws one ribbon of light that reacts to every keystroke on your machine (any app) and to your brain state from a Muse EEG headset. Colors, wave shape, and a brain illustration (three line groups for theta, alpha, and beta) follow calm, flow, and tense. It runs as an OBS Browser Source (horizontal or 9:16 vertical for TikTok), reads the headset over Bluetooth with automatic reconnect, and needs no other EEG server. No headset? Try the [live demo](https://freakandstein.github.io/typewave/) or run `npm run start:fake`. A small head icon shows whether each of the four sensors has good contact, and the HUD says what the headset link is doing (connecting, reconnecting, attempt N). Only physical key codes are used, never characters, and nothing is written to disk.
 
 ## Galeri
 
@@ -112,11 +113,14 @@ Jalankan dari **Terminal.app**, bukan dari terminal editor yang bisa mematikan p
 | Ketikan: kerapatan tombol per detik | tinggi gelombang pita dan kecepatan gesernya |
 | Ketikan: WPM | ketebalan pita (pita "istirahat" setelah 3 detik tanpa ketikan) |
 | Ketikan: tiap tombol | bead, sapuan Enter, batang Space, satu percikan di ilustrasi otak (siluet keyboard hanya dengan `?keyboard=1`) |
-| EEG: `spectrum_pos` (tenang ke tegang) | warna seluruh frame, kekasaran tepi, panjang gelombang dan kehalusan gelombang (tenang = panjang dan mulus, tegang = rapat dan patah), lebar dan berat huruf HUD, dan seberapa gelisah lipatan otak |
-| EEG: detak jantung (`hr`) | latar "bernapas" (ilustrasi otak tidak ikut berdenyut) |
+| EEG: `spectrum_pos` (tenang ke tegang) | warna seluruh frame, kekasaran tepi, panjang gelombang dan kehalusan gelombang (tenang = panjang dan mulus, tegang = rapat dan patah), dan seberapa gelisah lipatan otak |
+| EEG: detak jantung (`hr`) | angka `bpm` dengan ikon hati di HUD (ikonnya diam, tidak berdenyut) dan latar "bernapas" (ilustrasi otak tidak ikut berdenyut) |
 | EEG: level theta, alpha, beta | terang tiga jenis garis di ilustrasi otak (panjang = theta lambat, sedang = alpha, pendek = beta cepat) dan jenis garis yang dinyalakan percikan ketikan |
+| EEG: status sambungan dan kualitas tiap sensor | teks status di HUD dan empat titik sensor di baris detak jantung; tidak mengubah warna atau gelombang (bagian EEG di bawah) |
 
 Bentuk dasar gelombang dibuat dari rumus sinus; yang membawa data adalah tinggi, kecepatan, panjang gelombang, dan kehalusannya.
+
+Teks HUD (kondisi, wpm, detak jantung, status) selalu sama besar dan tebal, apa pun kondisi otaknya, dan angkanya berlebar tetap sehingga tidak bergoyang saat berganti, supaya tetap terbaca di OBS. HUD tidak menampilkan timer sesi. Ketebalannya satu angka di `CONFIG.type.hudWght` di `src/config.js` (bawaan 600; naikkan sampai 900 untuk lebih tebal).
 
 Ilustrasi otak di atas tengah adalah hiasan, bukan peta aktivitas otak: sumber EEG hanya mengirim angka gabungan, bukan per area, jadi titik yang menyala saat mengetik tidak menunjukkan bagian otak yang sebenarnya. Bentuknya dibuat oleh `node tools/gen_brain.mjs` (seed tetap, hasilnya `src/data/brain.js`); ukuran dan posisinya ada di `CONFIG.layout.*.brain` di `src/config.js`. Matikan dengan `?brain=0`.
 
@@ -186,6 +190,7 @@ Listener hanya membaca, jadi chord hotkey tetap sampai ke aplikasi yang sedang f
 | `controls` | `0`, `1` (tombol ekspor PNG) | `0` |
 | `keyboard` | `0`, `1` (siluet keyboard di bawah pita; pita naik ke tengah layar) | `0` |
 | `brain` | `0`, `1` (ilustrasi otak di atas tengah) | `1` |
+| `contact` | `0`, `1` (empat titik sensor Muse di HUD saat headset tersambung; teks status tetap tampil) | `1` |
 
 Halaman selalu menampilkan bingkai horizontal 21:9 (`wide`, bentuknya bisa diubah dengan `?ratio=`) atau vertikal 9:16 (`tall`) yang utuh di tengah jendela, jadi komposisinya sama dengan di OBS apa pun bentuk jendelanya; jendela yang bentuknya berbeda mendapat bilah hitam (transparan dengan `?transparent=1`). Di OBS dengan ukuran sumber 1920×823 (21:9; atau 1920×1080 dengan `?ratio=16:9`, atau 1080×1920 untuk `tall`) bingkai memenuhi sumber tanpa bilah.
 
@@ -200,6 +205,7 @@ menampilkan kolom tombol persis (dan tombolnya di siluet) untuk konten ASMR yang
 .venv/bin/python -m tools.autotype --count 200 --countdown 3 # tombol sungguhan lewat OS (fokuskan jendela target!)
 node tools/gen_session.mjs                                  # membuat ulang replay/sample-session.json (sintetis)
 .venv/bin/python -m eeg --fake relaxed                      # sumber EEG palsu saja (profil relaxed, focused, tense, mixed) ke bridge yang sudah jalan
+npm run start:fake -- --fake-degrade AF7:flat@20-40         # EEG palsu dengan sensor AF7 kontaknya buruk dari detik 20 sampai 40 (jenis flat, noisy, wild; boleh diulang)
 .venv/bin/python -m tools.fake_eeg_server --wander          # server EEG palsu di :8765, hanya untuk adapter lama (pos dan level gelombang bergerak)
 ```
 
@@ -209,7 +215,7 @@ Replay tanpa headset dan tanpa bridge: `http://127.0.0.1:8770/?replay=sample-ses
 
 Sumber EEG ada di project ini (paket `eeg/`); tidak butuh server EEG lain. `npm start` menjalankannya bersama bridge. Terpisah: `npm run eeg` (headset) atau `npm run eeg -- --fake` (palsu).
 
-Alurnya: headset Muse (Bluetooth) → streamer sendiri (`eeg/muse_streamer.py`: muselsl dengan dua penyesuaian macOS) di proses terpisah → LSL → pemrosesan sinyal (kualitas kanal, deteksi otot di dahi, level theta/alpha/beta, detak jantung dari PPG) → pesan `mind` 5 kali per detik ke bridge. Sekitar 17 detik pertama setelah tersambung belum ada data (jendela sinyal 2 detik + warm-up 15 detik): halaman tampil "no signal" lalu hidup sendiri.
+Alurnya: headset Muse (Bluetooth) → streamer sendiri (`eeg/muse_streamer.py`: muselsl dengan dua penyesuaian macOS) di proses terpisah → LSL → pemrosesan sinyal (kualitas kanal, deteksi otot di dahi, level theta/alpha/beta, detak jantung dari PPG) → pesan `mind` dan `headset` 5 kali per detik ke bridge. Sekitar 17 detik pertama setelah tersambung belum ada `mind` (jendela sinyal 2 detik + warm-up 15 detik): halaman menulis "menyiapkan sinyal" lalu hidup sendiri.
 
 **Pertama kali:** nyalakan headset, jalankan `npm start`. Headset dipindai lewat Bluetooth dan alamatnya disimpan di `eeg/.device.json`. Bila ada beberapa headset: `npm run eeg -- --scan` menampilkan daftarnya, lalu `npm start -- --name Muse-1A2B` (atau `--address`).
 
@@ -218,11 +224,29 @@ Alurnya: headset Muse (Bluetooth) → streamer sendiri (`eeg/muse_streamer.py`: 
 Cara kerja ini diadopsi dari project EEG (loop sambung ulang di `brainflow_connector.py`) dan ditulis ulang di `eeg/supervisor.py`, `eeg/stream.py`, `eeg/bridge_link.py`:
 
 - Headset mati, keluar jangkauan, atau Bluetooth macet: terdeteksi dalam sekitar 5 detik (proses streamer mati, atau tidak ada sampel EEG selama 5 detik) lalu **disambung ulang tanpa batas** dengan jeda 3, 5, 10, lalu 15 detik. Jeda kembali ke 3 detik setelah sambungan bertahan 30 detik, dan tiap 3 kegagalan beruntun alamat dipindai ulang (alamat Bluetooth bisa berubah). Tidak perlu menjalankan ulang apa pun.
-- Selama putus tidak ada data basi yang dikirim: halaman jatuh ke "no signal" dan pulih sendiri begitu data kembali (tanpa warm-up ulang).
+- Selama putus tidak ada data basi yang dikirim: halaman menulis "menyambung ulang, percobaan N" (bukan sekadar "no signal") dan pulih sendiri begitu data kembali (tanpa warm-up ulang).
 - Bridge mati lalu hidup lagi: sumber EEG menyambung lagi sendiri (jeda 1, 2, 5 detik) dan `npm start` menjalankan ulang proses yang mati.
 - Ctrl+C menghentikan seketika, bahkan saat sedang menunggu jeda, dan streamer ikut dimatikan (sumber EEG dimatikan lebih dulu, bridge terakhir). Hal yang sama untuk SIGTERM dan SIGHUP (jendela Terminal ditutup).
 - Bila sumber EEG mati keras, streamer keluar sendiri dalam beberapa detik (supaya tidak menahan koneksi Bluetooth), dan sisa dari sesi yang mati mendadak dibersihkan saat start berikutnya.
 - Terminal mencetak sebab dan jedanya, mis. `koneksi headset putus: tidak ada sampel EEG selama 5 detik ...; mencoba lagi dalam 3 detik (percobaan 1)`.
+
+### Status headset dan titik sensor
+
+Sumber EEG mengirim pesan `headset` 5 kali per detik, terpisah dari `mind` dan juga saat `mind` tidak ada: justru ketika headset baru dipasang dan semua sensor masih buruk tidak ada `mind`, dan di saat itulah kamu perlu tahu penyebabnya.
+
+| Teks di HUD (en / id) | Artinya |
+|---|---|
+| `connecting to headset` / `menyambung ke headset` | sedang memindai dan menyambung |
+| `reconnecting, attempt 2` / `menyambung ulang, percobaan 2` | sambungan putus; sedang percobaan ke-2 (tampil segera, tanpa menunggu data lama basi) |
+| `warming up` / `menyiapkan sinyal` | baru tersambung (atau tersambung ulang); menunggu jendela sinyal dan warm-up 15 detik |
+| `check the sensors` / `cek sensor` | tersambung, tetapi tidak ada satu pun sensor hijau sehingga tidak akan ada `mind`: headset belum menempel rapat |
+| `EEG source offline` / `sumber EEG terputus` | tidak ada kabar dari sumber EEG lebih dari 3 detik (dihitung sejak halaman tersambung lagi bila bridge sempat mati), atau sumbernya berhenti (jalankan `npm start`) |
+| `bridge disconnected` / `bridge terputus` | halaman kehilangan bridge; pulih sendiri saat bridge hidup lagi |
+| `no signal` / `tanpa sinyal` | seperti dulu: tidak ada data dan sumber EEG belum pernah terlihat (mis. tanpa headset) |
+
+Empat titik di baris detak jantung (di kiri ikon hati pada layout horizontal, di ujung baris pada vertikal) adalah kepala dilihat dari atas (dahi di atas): dua di dahi (AF7, AF8) dan dua di belakang telinga (TP9, TP10). **Hijau** = sinyal bagus, dipakai untuk menghitung level otak; **kuning** = kurang bagus (sangat tipis atau berisik), belum dipakai; **cincin merah** = buruk (datar atau liar), tidak dipakai, biasanya sensor belum menempel pada kulit. Warna dihaluskan 1,5 detik, jadi kedipan sesaat tidak mengubahnya, dan titik hanya tampil selama tersambung. Satu sensor yang tidak hijau tidak menghentikan apa pun: `mind` tetap dihitung dari sensor hijau yang tersisa (minimal satu). `?contact=0` menyembunyikan titik (teks status tetap).
+
+Kualitas dihitung dari simpangan baku sinyal 2 detik terakhir dengan ambang yang sama seperti pemrosesan sinyal (kanal di bawah 0,65 tidak dipakai). Ambang itu belum dicoba dengan headset sungguhan, jadi bisa perlu disetel. Teks galat (yang bisa memuat alamat Bluetooth) sengaja tidak dikirim ke halaman, karena halaman ini tampil di layar siaran.
 
 ### Yang perlu diperhatikan
 

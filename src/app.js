@@ -2,6 +2,7 @@
 import { CONFIG } from './config.js';
 import { createBus } from './core/bus.js';
 import { createMetrics } from './core/metrics.js';
+import { createHeadset } from './core/headset.js';
 import { gradeInto, createStateWord, clamp, lerp, smoothstep } from './core/color.js';
 import { createSpring, stepSpring } from './core/spring.js';
 import { waveShapeInto } from './core/wave.js';
@@ -31,7 +32,7 @@ export function start({ canvas, hudRoot, reportCanvas, panel, win }) {
   const bus = createBus();
   const stats = createStats();
   let metrics = createMetrics(Date.now());
-  let sessionStart = Date.now();
+  const headset = createHeadset(); // status sumber EEG dan headset (pesan `headset`) + status sambungan ke bridge
   const word = createStateWord();
   const ctx = canvas.getContext('2d');
   const hud = createHud(hudRoot, doc);
@@ -39,7 +40,7 @@ export function start({ canvas, hudRoot, reportCanvas, panel, win }) {
   gradeInto(grade, 0.5, 1, 1);
   const spr = { rest: createSpring(0, CONFIG.spring.restOmega), noSig: createSpring(1, CONFIG.spring.noSignalOmega) };
   const rp = { thick: 2, amp: 8, speed: 40, rough: 0, wavelength: 420, cr: 0, cg: 0, cb: 0 };
-  const view = { word: '', pos: 0.5, wpm: 0, wpmOn: false, hr: null, timerMs: 0, noSignal: true, paused: false, lang: params.lang, debugText: null };
+  const view = { word: '', pos: 0.5, wpm: 0, wpmOn: false, hr: null, noSignal: true, paused: false, lang: params.lang, debugText: null, headset: null, contact: null };
   const live = { paused: false, secure: false, keysFromBridge: false, listener: 'off' };
   const sweeps = new Float64Array(4).fill(-1e12);
   const perf = { frame: new Float32Array(PERF_N), draw: new Float32Array(PERF_N), n: 0 };
@@ -111,6 +112,7 @@ export function start({ canvas, hudRoot, reportCanvas, panel, win }) {
     if (brain) sparkBrain(brain, ann, params.privacy, now);
   });
   bus.on('mind', (m) => { metrics.onMind(m, Date.now()); });
+  bus.on('headset', (m) => { headset.onMessage(m, Date.now()); });
   bus.on('hello', (h) => {
     stats.helloCount++;
     stats.hello = h;
@@ -131,7 +133,7 @@ export function start({ canvas, hudRoot, reportCanvas, panel, win }) {
   });
   win.addEventListener('resize', build);
 
-  if (params.ws && !exclusive) createWsSource({ bus, url: params.ws, onState: (s) => { stats.wsConnected = s.connected; } });
+  if (params.ws && !exclusive) createWsSource({ bus, url: params.ws, onState: (s) => { stats.wsConnected = s.connected; headset.onBridge(s.connected, Date.now()); } });
   if (params.sim && !exclusive) {
     sim = createSim({ bus, root: panel, doc, demo: params.demo });
     createBrowserKeys({ bus, win, enabled: () => !live.keysFromBridge });
@@ -139,7 +141,6 @@ export function start({ canvas, hudRoot, reportCanvas, panel, win }) {
   if (params.replay) {
     loadReplay(`replay/${params.replay}.json`).then((events) => {
       metrics = createMetrics(Date.now());
-      sessionStart = Date.now();
       createReplay({ bus, events, onDone: () => { stats.replayDone = true; } }).start();
       stats.replayStarted = true;
     }).catch((err) => console.error('[replay]', err));
@@ -253,9 +254,10 @@ export function start({ canvas, hudRoot, reportCanvas, panel, win }) {
     view.wpm = snap.wpm;
     view.wpmOn = snap.typing;
     view.hr = snap.hrValid ? snap.hr : null;
-    view.timerMs = now - sessionStart;
     view.noSignal = snap.noSignal;
     view.paused = live.paused;
+    view.headset = headset.snapshot(now);
+    view.contact = params.contact ? view.headset.contact : null;
     view.debugText = params.debug ? debugText(now) : null;
     hud.update(view);
 
@@ -308,6 +310,7 @@ export function start({ canvas, hudRoot, reportCanvas, panel, win }) {
       state: () => {
         const now = Date.now();
         const s = metrics.snapshot(now);
+        const hs = headset.snapshot(now); // dihitung di sini, bukan dari view: aman sebelum frame pertama
         let sw = 0;
         for (let i = 0; i < sweeps.length; i++) if (now - sweeps[i] >= 0 && now - sweeps[i] <= CONFIG.enter.ms) sw++;
         return {
@@ -317,6 +320,7 @@ export function start({ canvas, hudRoot, reportCanvas, panel, win }) {
           ground: grade.ground.map(Math.round), ink: grade.ink.map(Math.round),
           beadsActive: beads.activeCount, beadKinds: kindCounts(), sweeps: sw,
           brain: brain ? { ...brainStats(brain), ...brainRect(g) } : null,
+          headset: { state: hs.state, attempt: hs.attempt, contact: hs.contact ? [...hs.contact] : null },
           reportVisible: report.visible, lastDt, maxDt: maxDtSeen, maxRawGap, hello: stats.hello,
         };
       },

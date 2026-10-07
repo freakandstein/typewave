@@ -5,7 +5,7 @@ import { parseParams, resolveLayout } from '../../src/params.js';
 test('default sesuai spec 8.2', () => {
   assert.deepEqual(parseParams(''), {
     layout: 'wide', fit: 'contain', ratio: null, demo: false, transparent: false, privacy: 'zone', sim: false, replay: null, lang: 'en',
-    ws: 'ws://127.0.0.1:8770/ws', debug: false, controls: false, keyboard: false, brain: true,
+    ws: 'ws://127.0.0.1:8770/ws', debug: false, controls: false, keyboard: false, brain: true, contact: true,
   });
 });
 
@@ -74,4 +74,12 @@ test('resolveLayout: auto mengikuti rasio viewport', () => {
   assert.equal(resolveLayout('auto', 1000, 1000), 'wide');
   assert.equal(resolveLayout('tall', 1920, 1080), 'tall');
   assert.equal(resolveLayout('wide', 1080, 1920), 'wide');
+});
+
+test('contact: titik sensor tampil secara bawaan; ?contact=0 atau false menyembunyikan; nilai lain tetap tampil', () => {
+  assert.equal(parseParams('').contact, true);
+  assert.equal(parseParams('?contact=0').contact, false);
+  assert.equal(parseParams('?contact=false').contact, false);
+  assert.equal(parseParams('?contact=1').contact, true);
+  assert.equal(parseParams('?contact=maybe').contact, true);
 });

@@ -68,26 +68,28 @@ Kualitas sinyal `q` (0..1) menskalakan saturasi ink: `sat = lerp(0.5, 1.0, q)`.
 
 Kata state (`calm` / `flow` / `tense`) memakai ambang yang sama dengan project EEG asal pemrosesan sinyalnya (bagian 11): `calm` bila `p < 0.35`, `flow` bila `0.35 <= p <= 0.65`, `tense` bila `p > 0.65`. Kandidat baru harus bertahan 500 ms sebelum kata berganti (hysteresis), supaya label tidak berkedip di sekitar ambang.
 
-Pada `?transparent=1` ground dihilangkan, sehingga color grade tidak tampil; ink dan sumbu huruf tetap berubah.
+Pada `?transparent=1` ground dihilangkan, sehingga color grade tidak tampil; ink tetap berubah.
 
 ### 3.2 Tipografi
 
 Satu family: **Anybody** (variable font, lisensi OFL, sumbu `wdth` 50 sampai 150, `wght` 100 sampai 900). File woff2 di-bundle lokal di `assets/fonts/` (beserta `OFL.txt`) supaya aman di OBS tanpa internet.
 
-Sumbu mengikuti state:
+Sumbu huruf HUD **tetap**, tidak mengikuti state: lebar dan tebal teks sama saat tenang, mengalir, maupun tegang, jadi teks tidak tampak membesar dan mengecil dan tetap terbaca sebagai Browser Source di OBS (permintaan user, 6 Oktober 2026). Nilainya satu tempat, `CONFIG.type`:
 
 ```
-wdth = lerp(130, 70, pos)     // calm lebar, tense padat
-wght = lerp(300, 700, pos)    // calm tipis, tense tebal
+wdth = 100    // hudWdth: lebar normal
+wght = 600    // hudWght: semi-tebal; naikkan (maksimum 900) bila ingin lebih tebal
 ```
+
+Rancangan awal memorfkan `wdth` 130 ke 70 dan `wght` 300 ke 700 mengikuti `pos` (tenang lebar dan tipis, tegang padat dan tebal); dihapus karena lebar dan tebal yang berubah-ubah terbaca sebagai membesar dan mengecil. Kondisi tetap terbaca dari kata state, warna frame, dan bentuk gelombang.
 
 Aturan teks:
 
 - Semua huruf kecil / sentence case: `calm`, `flow`, `tense`, `74 wpm`.
 - Tanpa label kecil di atas konten, tanpa huruf kapital semua, tanpa ornamen.
-- Ukuran referensi di canvas 1080 tinggi: state word 96 px, angka WPM 64 px, teks kecil (HR, timer) 28 px. Skala proporsional dengan lebar (wide: lebar / 1920) atau sisi pendek (tall).
+- Ukuran referensi di canvas 1080 tinggi: state word 96 px, angka WPM 64 px, teks kecil (HR) 28 px. Skala proporsional dengan lebar (wide: lebar / 1920) atau sisi pendek (tall).
 
-Rendering: HUD berupa elemen DOM di atas canvas dan memakai `font-variation-settings`, karena Canvas 2D tidak bisa mengatur sumbu `wdth` secara kontinu. Kartu laporan digambar di canvas dengan sumbu statis (`wdth` 100, `wght` 500) supaya tampilan di layar dan ekspor PNG sama. Render menunggu `document.fonts.ready`.
+Rendering: HUD berupa elemen DOM di atas canvas dan memakai `font-variation-settings` (dipasang sekali di akar HUD dan diwarisi semua teks), karena Canvas 2D tidak bisa mengatur sumbu font variabel. Kartu laporan digambar di canvas dengan sumbu statis (`wdth` 100, `wght` 500) supaya tampilan di layar dan ekspor PNG sama. Render menunggu `document.fonts.ready`.
 
 ---
 
@@ -114,7 +116,7 @@ wide 21:9 (default, canvas OBS 1920x823)          tall 9:16 (TikTok)
 - Rata kiri untuk teks. Pita memenuhi lebar (wide) atau tinggi (tall).
 - **Safe zone tall:** sisakan kira-kira 20% bawah, 15% kanan, dan 10% atas bebas dari elemen penting (tertutup UI TikTok). Angka ini perkiraan; verifikasi ulang dengan screenshot dari TikTok LIVE Studio sebelum rilis.
 - **Wide:** HUD di pojok atas dan ilustrasi otak (6.4) di atas tengah. Bingkai bawaan 21:9 (tinggi 24% lebih pendek daripada 16:9). Tata letak ringkas (`CONFIG.compact`): skala dari lebar jadi elemen tetap seukuran, bead jatuh dari tepat di bawah otak, dan pita selalu 200 px dari dasar bingkai (cukup untuk simpangan terbesarnya), sehingga tidak ada ruang kosong yang terbuang; otak mengecil sebanding bila bingkai lebih pendek dari 21:9. Pada 16:9 (`?ratio=16:9`) hasilnya sama dengan tata letak lama (pita di 58% tinggi, bead dari 31%). Siluet keyboard (footprint, 6.2) tidak tampil secara default; `?keyboard=1` menyalakannya, mengembalikan bingkai ke 16:9 dan pita ke tengah (50%), dan mengecilkan otak sedikit.
-- **Tall:** HUD rata kiri, mulai di bawah zona atas 10% (state word, `NN wpm`, lalu HR dan timer berukuran kecil di bawahnya); kolom kanan 15% tetap kosong. Ilustrasi otak di kanan kolom HUD, di dalam safe zone. Gambar di atas skematis.
+- **Tall:** HUD rata kiri, mulai di bawah zona atas 10% (state word, `NN wpm`, lalu HR berukuran kecil di bawahnya); kolom kanan 15% tetap kosong. Ilustrasi otak di kanan kolom HUD, di dalam safe zone. Gambar di atas skematis.
 - `?transparent=1` menghilangkan ground sehingga bisa ditumpuk di atas feed kamera.
 
 ### 4.1 Geometri
@@ -141,6 +143,8 @@ Transport: WebSocket ke `ws://127.0.0.1:8770/ws`. Sumber di luar halaman mengiri
 {"t":"hello","keys":true,"paused":false,"secure":false}
 {"t":"key","code":"KeyA","at":1759480000123,"rep":false,"mods":["shift"]}
 {"t":"mind","pos":0.42,"hr":71,"q":0.9,"theta":0.3,"alpha":0.5,"beta":0.7}
+{"t":"headset","state":"connected","contact":[1,0.5,0.1,0.9]}
+{"t":"headset","state":"reconnecting","attempt":2}
 {"t":"ctl","pause":true}
 {"t":"ctl","report":true}
 {"t":"ctl","secure":true}
@@ -151,6 +155,7 @@ Transport: WebSocket ke `ws://127.0.0.1:8770/ws`. Sumber di luar halaman mengiri
 | `hello` | `keys`, `paused`, `secure` (bool) | Snapshot status bridge, dikirim ke klien yang baru tersambung dan setiap kali status listener berubah. Klien menyinkronkan pause dan secure dari sini supaya tidak mewarisi status basi setelah bridge di-restart. `keys` = listener global aktif; bila `true`, `browserkeys.js` dimatikan supaya ketikan tidak terhitung dobel |
 | `key` | `code` (nilai `KeyboardEvent.code`), `at` (epoch ms), `rep` (bool, default false), `mods` (modifier yang sedang ditahan: `shift`, `ctrl`, `alt`, `cmd`; default kosong) | Kode fisik saja, tidak pernah karakter. Hanya key-down. Semua tombol diteruskan, termasuk modifier (`ShiftLeft`, `MetaLeft`, dst.), panah, F-key, dan auto-repeat (`rep: true`). Kode yang tak dikenal diteruskan sebagai `Vk<hex>` (mis. `Vk0A`) |
 | `mind` | `pos` 0..1 (calm ke tense), `hr` bpm (opsional), `q` 0..1 (opsional, default 1), `theta`, `alpha`, `beta` 0..1 (opsional) | Target 5 Hz. Boleh tidak ada sama sekali. `theta`/`alpha`/`beta` adalah level gelombang relatif terhadap riwayat user sendiri beberapa detik terakhir (sumber EEG sudah menormalisasinya); dijepit ke 0..1, dan tanpa field ini ilustrasi otak memakai level netral 0,5 |
+| `headset` | `state` (`connecting`, `connected`, `reconnecting`, `stopped`), `attempt` (bilangan bulat; hanya `reconnecting`), `contact` (tepat empat angka 0..1: kualitas kanal TP9, AF7, AF8, TP10; hanya `connected`) | Status sambungan headset dan kontak tiap sensor dari sumber EEG, 5 Hz selama sumber hidup, juga saat tidak ada `mind` (headset baru dipasang: semua sensor buruk dan belum ada `mind`, tepat saat penyebabnya perlu terlihat). Bridge hanya meneruskan bidang yang dikenal dan tervalidasi (status di luar daftar dibuang dan dihitung `dropped`; kontak dijepit 0..1; percobaan 0..9999), tidak pernah teks bebas seperti pesan galat yang bisa memuat alamat Bluetooth: halaman tampil di layar siaran. Halaman menganggap sumber EEG terputus bila tidak ada pesan `headset` selama 3 detik, dihitung dari saat halaman tersambung lagi ke bridge bila bridge sempat mati (detak yang hilang saat bridge mati bukan bukti sumbernya mati, jadi tidak ada kedip "sumber EEG terputus") |
 | `ctl` | `pause`, `report`, `secure` | `pause`: jeda aktif atau tidak (saat aktif bridge berhenti meneruskan key). `report`: tampil atau tutup kartu laporan. `secure`: macOS secure input aktif sehingga ketikan tidak terbaca (hanya ditampilkan dengan `?debug=1`) |
 
 Sumber input (semua menghasilkan pesan di atas):
@@ -158,7 +163,7 @@ Sumber input (semua menghasilkan pesan di atas):
 | Sumber | Fungsi |
 |---|---|
 | listener global (`bridge/listener.py`) | Semua key-down di sistem |
-| `eeg/` (`python -m eeg`) | `mind` dari headset Muse yang dibaca langsung, dengan sambung ulang otomatis (bagian 11.1) |
+| `eeg/` (`python -m eeg`) | `mind` dan `headset` dari headset Muse yang dibaca langsung, dengan sambung ulang otomatis (bagian 11.1) |
 | `adapters/eeg_socketio.py` | `mind` dari server EEG lama; opsional (bagian 11.2) |
 | `ws.js` | Menerima pesan dari bridge ke dalam halaman |
 | `browserkeys.js` | `keydown` di halaman (`rep` dari `event.repeat`), untuk pengembangan. Aktif hanya bila `sim=1` dan bridge tidak melaporkan listener global |
@@ -203,7 +208,6 @@ Angka dalam px mengacu ke canvas 1920 lebar (wide) atau 1080 lebar (tall): skala
 | Input | Efek | Parameter |
 |---|---|---|
 | `pos` | Warna ground dan ink | Lihat 3.1 |
-| `pos` | Lebar dan berat huruf | Lihat 3.2 |
 | `pos` | Kekasaran tepi pita | `r = smoothstep(0.5, 1.0, pos)`; amplitudo noise tepi = `r × 5 px`; r = 0 berarti tepi mulus |
 | `pos` | Panjang gelombang dan kehalusan pita | Panjang gelombang `lerp(640, 200, pos)` px dan bobot harmonik 2.3× `lerp(0.15, 0.45, pos)`: tenang = ayunan panjang hampir sinus murni, tegang = lebih rapat dan lebih patah. Titik tengah (0.5) = 420 px dan 0.30. Saat noSignal kembali ke bentuk netral (pos 0.5) |
 | `hr` | Ground "bernapas" | Faktor luminansi `1 + 0.03 × sin(phase)`, `phase += 2π × hr/60 × dt` (integrasikan fase, jangan hitung dari waktu absolut, supaya tidak loncat saat hr berubah) |
@@ -247,9 +251,10 @@ Opsional: tidak digambar secara default, hanya dengan `?keyboard=1` (8.2). Tanpa
 HUD adalah elemen DOM di atas canvas (lihat 3.2).
 
 - Kiri atas: state word (`calm` / `flow` / `tense`), di bawahnya `NN wpm`. WPM hanya tampil saat mengetik: fade in 400 ms, fade out 1.5 s setelah idle.
-- Kanan atas (wide) atau di bawah `NN wpm` (tall): HR (`68 bpm`, disembunyikan bila `hr` tidak ada) dan timer sesi `mm:ss`, ukuran kecil. Timer mulai saat halaman dimuat.
-- Teks status kecil di dekat timer: `no signal` (saat noSignal) dan `paused` (saat jeda). Dengan `?debug=1` ditambah fps, jumlah key diterima, kode terakhir, dan status listener (`ok`, `no-permission`, `secure-input`).
-- Label state dalam bahasa Inggris huruf kecil; `?lang=id` menggantinya menjadi `tenang`, `mengalir`, `tegang`, `tanpa sinyal`, `jeda`.
+- Kanan atas (wide) atau di bawah `NN wpm` (tall): satu baris pendek berisi titik sensor, ikon hati, lalu HR (`68 bpm`; ikon dan angka disembunyikan bila `hr` tidak ada). Ikon hati adalah SVG statis berwarna ember `#FF5E72` (tanpa animasi: tidak berdenyut mengikuti detak jantung) supaya jelas bahwa angkanya detak jantung, bukan tempo. Tidak ada timer sesi di HUD: user menilainya tidak perlu, dan angkanya yang berganti tiap detik terasa bergoyang (7 Oktober 2026); durasi sesi tetap ada di kartu laporan. Semua angka HUD (wpm dan HR) memakai angka berlebar tetap (`font-variant-numeric: tabular-nums`; Anybody punya fitur `tnum`), karena angka proporsional (1 dan 7 lebih sempit, selisih hingga sekitar 1,7 px per digit pada 28 px) membuat teks terlihat membesar dan mengecil tiap angkanya berganti.
+- Teks status kecil di bawah baris HR, lebarnya dibatasi sekitar 320 px pada skala 1 (teks panjang seperti `menyambung ulang, percobaan 2` dibungkus jadi dua baris, rata kanan di wide dan rata kiri di tall), digabung dengan `paused` saat jeda. Isinya dari status headset (`core/headset.js`; teksnya `headsetText` di `core/text.js`), dengan urutan: `bridge disconnected` (halaman kehilangan WebSocket ke bridge); `EEG source offline` (sumber EEG pernah terlihat tetapi tidak ada pesan `headset` selama 3 detik, atau berhenti); `connecting to headset`; `reconnecting, attempt N`. Keempatnya tampil segera, walau `mind` terakhir belum basi. Saat `connected`: `check the sensors` bila tidak ada satu pun sensor `good` (DSP butuh minimal satu kanal >= 0,65 untuk menghasilkan `mind`; tampil seketika, tanpa menunggu `mind` lama basi); `warming up` bila belum ada kontak segar (baru tersambung atau tersambung ulang, jadi tidak ada jeda kosong sesudah "menyambung ulang") atau belum ada `mind` (jendela sinyal dan warm-up); selain itu tidak ada teks. Tanpa kabar apa pun dari sumber EEG (mis. tanpa headset): `no signal` saat noSignal, seperti sebelumnya. Dengan `?debug=1` ditambah fps, jumlah key diterima, kode terakhir, dan status listener (`ok`, `no-permission`, `secure-input`).
+- Titik sensor: glyph kepala dilihat dari atas (dahi di atas, hidung kecil sebagai penanda) dengan empat titik: dua di dahi (AF7, AF8) dan dua di belakang telinga (TP9, TP10). Tingginya 88 px pada skala 1 (sekitar tiga kali tinggi teks HR; ukuran 44 px dan 72 px dinilai terlalu kecil di OBS, permintaan user 7 Oktober 2026), dan semua bagiannya (lingkar, hidung, titik) berskala dari satu nilai, `--s` di `index.html`. Letaknya di baris HR: di kiri ikon hati (wide, baris rata kanan) atau di ujung baris (tall, baris rata kiri); tempatnya selalu disisakan (opacity, bukan `display`), jadi HR tidak bergeser saat titik muncul. Tampil (fade 600 ms) hanya selama `connected` dan pesannya segar, dan hilang saat putus. Level tiap sensor dari kualitas kanal dengan ambang yang sama seperti DSP: >= 0,65 `good` (titik hijau `#7ADFA0`; kanal dipakai untuk level otak), >= 0,25 `fair` (titik kuning `#F2B24E`; kurang bagus, belum dipakai), di bawahnya `poor` (cincin merah `#FF5E72`; buruk, tidak dipakai). Bentuk (titik atau cincin) ikut membedakan, bukan hanya warna. Warna berubah halus (500 ms) dan tidak berdenyut atau bergerak. `?contact=0` menyembunyikan titik (teks status tetap).
+- Label state dalam bahasa Inggris huruf kecil; `?lang=id` menggantinya menjadi `tenang`, `mengalir`, `tegang`, `tanpa sinyal`, `jeda`, dan teks status headset (`bridge terputus`, `sumber EEG terputus`, `menyambung ke headset`, `menyambung ulang, percobaan N`, `menyiapkan sinyal`, `cek sensor`).
 
 ### 6.4 Ilustrasi otak
 
@@ -334,9 +339,10 @@ typewave/
       bus.js               event bus lokal
       metrics.js           IKI, WPM, density, session log
       keys.js              klasifikasi tombol (karakter/backspace/enter/lain)
-      text.js              label en/id, sumbu font, format timer/durasi
+      text.js              label en/id (termasuk status headset), format durasi
       placement.js         posisi bead (exact/zone, wide/tall)
       color.js             OKLab mix, smoothstep
+      headset.js           status sumber EEG dan headset di halaman: pesan headset, kekinian (3 detik), status bridge, level kontak
       spring.js            critically damped spring
     render/
       scene.js             geometri (s,c) ke kanvas untuk wide/tall
@@ -360,16 +366,16 @@ typewave/
     decode.py              decoder event Quartz ke KeyEvent (murni, tanpa Quartz)
     requirements.txt       aiohttp, pyobjc-framework-Quartz
   eeg/                     sumber EEG mandiri (bagian 11.1)
-    __main__.py            CLI: python -m eeg [--fake] [--scan] [--address] [--name] [--python] [--bridge] [--warmup] [--state-dir]
+    __main__.py            CLI: python -m eeg [--fake [--fake-degrade]] [--scan] [--address] [--name] [--python] [--bridge] [--warmup] [--state-dir]
     config.py              Settings: backoff, jendela, warm-up, laju kirim
     scan.py                pindai BLE (bleak) dan cache alamat headset
     stream.py              MuseSession: streamer muselsl di subprocess -> LSL (pylsl), deteksi putus dan stall, pidfile
     muse_streamer.py       streamer di subprocess: muselsl.stream dengan penyesuaian CoreBluetooth, tanpa watchdog bawaan, keluar bila induknya mati
     supervisor.py          loop sambung ulang tanpa batas dengan backoff
     dsp.py                 kualitas kanal, band power theta/alpha/beta, EMG frontal, detak jantung dari PPG
-    state.py               normalisasi, penghalusan, ambang adaptif, spectrum_pos, warm-up
+    state.py               normalisasi, penghalusan, ambang adaptif, spectrum_pos, warm-up, kontak per sensor
     bridge_link.py         WebSocket ke bridge dengan sambung ulang
-    runner.py              perakit: supervisor + dsp + state + pengiriman 5 Hz
+    runner.py              perakit: supervisor + dsp + state + pengiriman mind dan headset 5 Hz
     requirements.txt       muselsl, bleak, pylsl, brainflow, numpy, scipy
     lsl_quiet.cfg          konfigurasi liblsl yang menyenyapkan log native (dipakai lewat LSLAPICFG)
   adapters/                opsional: server EEG lama (bagian 11.2)
@@ -381,7 +387,7 @@ typewave/
     autotype.py            tombol sungguhan lewat OS
     gen_session.mjs        generator sesi sintetis untuk replay
     gen_brain.mjs          generator kontur dan lipatan otak (reaksi-difusi, seed tetap)
-    fake_muse_lsl.py       streamer Muse palsu (stream LSL) untuk tes dan demo tanpa headset
+    fake_muse_lsl.py       streamer Muse palsu (stream LSL) untuk tes dan demo tanpa headset; --degrade merusak kontak satu sensor pada jendela waktu
     fake_eeg_server.py     meniru event state_update server EEG lama
   replay/
     sample-session.json
@@ -414,6 +420,7 @@ Tanpa bundler dan tanpa framework: ES modules polos, Canvas 2D untuk pita/bead/f
 | `controls` | `0`, `1` | `0` |
 | `keyboard` | `0`, `1` (siluet keyboard di bawah pita, 6.2) | `0` |
 | `brain` | `0`, `1` (ilustrasi otak, 6.4) | `1` |
+| `contact` | `0`, `1` (titik sensor di HUD, 6.3) | `1` |
 
 ### 8.3 Pengaturan OBS
 
@@ -469,7 +476,7 @@ headset Muse 2/S ─ BLE (bleak) ─> streamer muselsl (subprocess sendiri) ─ 
 - **Akuisisi** (`eeg/stream.py` dan `eeg/muse_streamer.py`): `eeg/muse_streamer.py` (muselsl.stream untuk satu alamat BLE, dengan PPG) berjalan di subprocess dengan sesi sendiri, dijalankan langsung oleh interpreter streamer sehingga `--python` hanya perlu punya muselsl. Dua penyesuaian atas muselsl 2.5.0: (1) muselsl mendaftarkan kanal kontrol dua kali (`connect()` lalu `refresh_subscriptions()`), dan bleak di CoreBluetooth menolak yang kedua dengan `ValueError("Characteristic notifications already started")`, jadi muselsl polos mati di setiap sambungan macOS; penolakan yang persis itu diabaikan, kesalahan lain tetap gagal terang-terangan; (2) watchdog muselsl sendiri (`AUTO_DISCONNECT_DELAY` 3 detik) memakai `last_timestamp` yang untuk PPG dihitung dari jam nominal tanpa koreksi paket hilang, jadi bisa keluar "Disconnected." padahal EEG sehat; watchdog itu dimatikan dan pengawas TypeWave menggantikannya. Streamer juga keluar sendiri (SIGINT, lalu paksa) bila proses induknya mati keras. Stream EEG (256 Hz; TP9, AF7, AF8, TP10) dan PPG (64 Hz) dicari lewat `source_id` alamat itu, jadi headset atau streamer lain yang kebetulan menyala tidak tertukar, dan ditunggu sampai 25 detik.
 - **DSP** (`eeg/dsp.py`, fungsi murni, jendela 2 detik tiap 0,15 detik): kualitas kanal 0..1 dari simpangan baku (datar atau liar = 0). Otot dahi (EMG) dicek di AF7 dan AF8 (puncak ke puncak di atas 150 µV, atau energi 25 sampai 40 Hz di atas 0,8 kali energi 13 sampai 25 Hz); bila ada, beta tidak dipercaya dan nilai lamanya dipertahankan. Kanal berkualitas di bawah 0,65, berartefak di atas 300 µV, atau didominasi listrik 50 Hz (di dahi) dilewati. PSD Welch lewat BrainFlow (jendela Blackman-Harris): theta 4 sampai 8 Hz, alpha 8 sampai 13 Hz, beta 13 sampai 25 Hz. Detak jantung dari puncak PPG inframerah (median selang antar puncak) tiap 5 detik.
 - **Status** (`eeg/state.py`): tiap besaran dinormalisasi ke 0..1 terhadap riwayatnya sendiri (persentil 10..90 dari 120 pembaruan terakhir, sekitar 18 detik) lalu dihaluskan (EMA 0,20 per 0,15 detik, dihitung dengan waktu nyata). Warm-up 15 detik sejak pembaruan valid pertama: belum ada `mind`. Tanpa pembaruan valid selama 2 detik juga tidak ada `mind`, jadi halaman jatuh ke noSignal setelah 5 detik, lebih jujur daripada menampilkan angka basi.
-- **Pengiriman** (`eeg/bridge_link.py`): `mind` ke bridge 5 Hz; selama bridge tidak terhubung pesan dibuang.
+- **Pengiriman** (`eeg/bridge_link.py`): `mind` dan `headset` ke bridge 5 Hz; selama bridge tidak terhubung pesan dibuang.
 
 | `mind` | Dihitung dari |
 |---|---|
@@ -477,6 +484,14 @@ headset Muse 2/S ─ BLE (bleak) ─> streamer muselsl (subprocess sendiri) ─ 
 | `pos` | arousal = 0,70 beta − 0,10 alpha − 0,05 rasio theta/beta (semuanya sudah dinormalisasi dan dihaluskan), dibandingkan dengan ambang adaptif (median arousal 2 menit terakhir + 0,03; diperbarui saat warm-up selesai lalu tiap 30 detik), dihaluskan dengan konstanta waktu 0,5 detik; 0 calm, 0,5 flow, 1 tense; zona 0,35/0,65 sama dengan spec |
 | `hr` | detak jantung dari PPG; dihilangkan selama belum ada |
 | `q` | rata-rata kualitas kanal TP9, AF7, AF8, TP10 (0..1) |
+
+| `headset` | Dihitung dari |
+|---|---|
+| `state` | status pengawas sambungan (`eeg/supervisor.py`): `connecting`, `connected`, `reconnecting`, `stopped`; dikirim 5 Hz, jadi sekaligus tanda sumber EEG hidup |
+| `attempt` | hanya `reconnecting`: jumlah kegagalan beruntun sampai sekarang (1 = percobaan sambung ulang pertama); naik tiap gagal, reset setelah sambungan stabil |
+| `contact` | hanya `connected`: kualitas tiap kanal (TP9, AF7, AF8, TP10) dari DSP, dihaluskan EMA konstanta waktu 1,5 detik (kedip sesaat tidak mengubah warna titik). Dicatat sebelum pemeriksaan kanal valid, jadi tetap ada saat warm-up dan saat semua kanal buruk (tidak ada `mind`). Dibuang bila tidak diperbarui lebih dari 2 detik atau koneksi hilang |
+
+Teks galat sengaja tidak ikut dikirim (bisa memuat alamat Bluetooth, dan halaman tampil di layar siaran).
 
 #### Sambung ulang otomatis
 
@@ -503,7 +518,7 @@ Batasan:
 - Muse 2 (dan Muse S generasi lama dengan protokol yang sama). Muse S Athena memakai kelas protokol lain di muselsl 2.5.0 dan belum diuji.
 - Pemindaian BLE dibatasi waktu (timeout + 10 detik): bleak menunggu tanpa batas selama dialog izin Bluetooth tertunda, dan tanpa batas itu pengawas ikut macet.
 - Yang terbukti hanya sampai emulator BLE (aturan CoreBluetooth dan paket berformat Muse). Radio Bluetooth dan asumsi muselsl di macOS yang tidak ditiru emulator (mis. pemetaan handle karakteristik bleak) hanya terbukti dengan headset sungguhan (butir 33).
-- `--fake [relaxed|focused|tense|mixed]` memakai `tools/fake_muse_lsl.py`: stream LSL sintetis (EEG 5 kanal 256 Hz dan PPG) dengan gangguan yang bisa disuntik untuk tes (berhenti, crash, stall, lambat tersambung, gagal tersambung).
+- `--fake [relaxed|focused|tense|mixed]` memakai `tools/fake_muse_lsl.py`: stream LSL sintetis (EEG 5 kanal 256 Hz dan PPG) dengan gangguan yang bisa disuntik untuk tes (berhenti, crash, stall, lambat tersambung, gagal tersambung). `--fake-degrade KANAL:JENIS@MULAI[-AKHIR]` (boleh diulang; hanya bersama `--fake`; juga lewat `tools/start.py`) merusak kontak satu sensor pada jendela waktu: KANAL `TP9|AF7|AF8|TP10`, JENIS `flat` (datar), `noisy` (sangat berisik), `wild` (liar), detik sejak streamer jalan, tanpa AKHIR berlaku seterusnya. Untuk menguji dan mendemokan titik sensor tanpa headset.
 - Log native liblsl (banner INFO dan "ERR Stream transmission broke off") disenyapkan lewat `eeg/lsl_quiet.cfg`, kecuali pengguna punya konfigurasi LSL sendiri (`LSLAPICFG`, atau `lsl_api.cfg` di folder kerja, home, atau /etc) yang tidak boleh ditimpa; sambung ulang yang sebenarnya dicatat pengawas.
 - Drum engine sebaiknya di-mute saat merekam ASMR, karena mic menangkap suara keyboard.
 
@@ -546,7 +561,7 @@ Satu daftar, tanpa fase. Semua butir harus terpenuhi. Penanda: **[otomatis]** di
 **Tampilan**
 
 10. [otomatis] `?sim=1&layout=wide` terbuka tanpa error konsol, dengan bridge maupun `?ws=off`.
-11. [otomatis] Slider `pos` mengubah ground, ink, tepi pita, dan lebar huruf secara halus, tanpa kedip atau lompat (selisih nilai render antar frame di bawah ambang).
+11. [otomatis] Slider `pos` mengubah ground, ink, dan tepi pita secara halus, tanpa kedip atau lompat (selisih nilai render antar frame di bawah ambang). Teks HUD tidak ikut berubah: sumbu huruf, ukuran, dan lebar teks yang sama tetap sama di tenang, mengalir, dan tegang; angka berlebar tetap (tabular) jadi lebar HR dan wpm tidak berubah saat angkanya berganti; tidak ada timer di HUD; HR berikon hati yang diam, dalam satu baris pendek dengan status panjang dibungkus.
 12. [otomatis] Bead muncul per ketikan; backspace, space, Enter, dan tombol lain tampil berbeda; idle 3 detik membuat pita istirahat; menghentikan `mind` 5 detik menghasilkan grade netral.
 13. [otomatis] Warna ground dan ink di `pos` 0.1, 0.5, 0.9 cocok dengan token bagian 3 (sampel piksel, toleransi kecil), untuk wide dan tall.
 14. [otomatis] `?layout=tall` di 1080×1920: HUD di luar safe zone (cek bounding box, screenshot disimpan untuk review). `?transparent=1` menghilangkan ground. `?lang=id` mengganti label.
@@ -593,6 +608,10 @@ Satu daftar, tanpa fase. Semua butir harus terpenuhi. Penanda: **[otomatis]** di
 
 36. [otomatis] Demo online (8.4): halaman yang dibuka dari host selain loopback dan dari subfolder (diuji lewat host palsu `demo.test/typewave/`) otomatis menjadi demo; semua berkas termuat lewat alamat relatif; tanpa WebSocket dan tanpa error konsol; simulator mengetik sendiri dan pos serta level gelombang mengembara; pengunjung bisa mengetik di keyboard-nya dan tombol berhenti menghentikan ketikan otomatis; keterangan tampil dan menaut ke repo. [kamu] Tampilan di GitHub Pages sungguhan dan pratinjau tautan di aplikasi pesan.
 
+**Status headset**
+
+37. [otomatis] Status headset dan titik sensor: sumber EEG mengirim `headset` 5 Hz (status; kontak per sensor dihaluskan, tetap terkirim saat warm-up dan saat semua sensor buruk sehingga tidak ada `mind`; nomor percobaan naik selama gagal berulang dan kontak hilang selama putus; tanpa teks galat); bridge hanya meneruskan bidang yang valid dan menghitung yang tidak; HUD menulis teks tiap keadaan (menyambung, menyambung ulang percobaan N, menyiapkan sinyal, cek sensor, sumber EEG terputus, bridge terputus) dan menampilkan titik hijau, kuning, dan cincin merah sesuai kontak, yang hilang saat putus; `?contact=0` menyembunyikan titik; titik tidak menabrak HR, tidak menggesernya, dan tetap di dalam bingkai wide dan tall; bridge dimatikan lalu dinyalakan lagi (lebih dari 3 detik, sementara sumber EEG terus berdetak), halaman menulis "bridge terputus" lalu pulih tanpa berkedip "sumber EEG terputus"; API debug aman dipanggil sebelum frame pertama. Rantai penuh dengan sumber palsu (`--fake-degrade AF7:flat@0`): titik AF7 cincin merah dan tiga lainnya hijau, `mind` tetap mengalir; streamer dibunuh: "menyambung ulang, percobaan 1" lalu pulih. [kamu] Dengan headset sungguhan: titik berubah hijau saat headset dirapatkan, teks status tampil saat headset dimatikan dan dinyalakan lagi, dan ambang kualitas (0,65 dan 0,25) terasa pas.
+
 ---
 
 ## 13. Rencana tes
@@ -603,9 +622,10 @@ Satu daftar, tanpa fase. Semua butir harus terpenuhi. Penanda: **[otomatis]** di
 - **OS (`tools/autotype.py` + bridge + Chrome headed):** butir 1 dan 5 dengan event OS sungguhan.
 - **Visual:** Playwright screenshot per kombinasi `pos` ∈ {0.1, 0.5, 0.9} × layout {wide, tall}; sampel piksel dibandingkan dengan token warna, dan screenshot disimpan untuk review mata. Area otak dicek berisi garis berwarna ink grade (dan kosong dengan `?brain=0`).
 - **Performa:** fps dan frame time dari render loop lewat `?debug=1` selama 60 detik; soak 10 menit dengan ketikan simulasi dan pengukuran heap lewat CDP.
-- **EEG mandiri (Python `unittest`):** `dsp` (sinyal sintetis 6, 10, 20 Hz; kualitas kanal; EMG; listrik 50 Hz; artefak; detak jantung), `state` (normalisasi, penghalusan, ambang adaptif, warm-up, kebasian), `supervisor` (jam dan penantian palsu: backoff, reset, pembatalan), `stream` (proses dan LSL sungguhan dengan `tools/fake_muse_lsl.py`: mati, crash, stall, gagal mulai, lambat, dibatalkan, yatim), `scan` (cache, filter nama), `bridge_link` (bridge sungguhan dimatikan lalu dinyalakan), `runner` (end-to-end), CLI (proses `python -m eeg` sungguhan terhadap bridge sungguhan: SIGINT, SIGTERM, streamer dibunuh dari luar, streamer yang selalu gagal), dan peluncur.
+- **EEG mandiri (Python `unittest`):** `dsp` (sinyal sintetis 6, 10, 20 Hz; kualitas kanal; EMG; listrik 50 Hz; artefak; detak jantung), `state` (normalisasi, penghalusan, ambang adaptif, warm-up, kebasian), `supervisor` (jam dan penantian palsu: backoff, reset, pembatalan), `stream` (proses dan LSL sungguhan dengan `tools/fake_muse_lsl.py`: mati, crash, stall, gagal mulai, lambat, dibatalkan, yatim), `scan` (cache, filter nama), `bridge_link` (bridge sungguhan dimatikan lalu dinyalakan), `runner` (end-to-end, termasuk pesan `headset`: status, kontak, nomor percobaan, tanpa teks galat), kontak sensor di `state`, `--degrade` di streamer palsu (kualitas kanal yang dihasilkan dicek dengan DSP), CLI (proses `python -m eeg` sungguhan terhadap bridge sungguhan: SIGINT, SIGTERM, streamer dibunuh dari luar, streamer yang selalu gagal), dan peluncur.
 - **muselsl asli di bawah emulator BLE (`test/bridge/test_eeg_muselsl.py`, `fake_ble.py`):** tes dengan streamer LSL palsu tidak bisa menangkap kelakuan muselsl sendiri, jadi kode muselsl sungguhan dijalankan di bawah klien bleak palsu: karakterisasi dua kelakuan muselsl 2.5.0 yang dikerjakan `muse_streamer.py`, lalu rantai penuh sampai ke `MuseSession` dan CLI. Emulator mengikuti sumber bleak dan muselsl yang terpasang; ia bukan bukti perilaku radio atau CoreBluetooth sungguhan.
 - **EEG mandiri di halaman (Playwright + bridge + `python -m eeg --fake`):** level gelombang bergerak; streamer dibunuh, halaman jatuh ke noSignal lalu pulih sendiri.
+- **Status headset di halaman (Playwright + bridge, tanpa dan dengan `python -m eeg --fake --fake-degrade`):** teks dan titik untuk tiap keadaan, `?contact=0`, geometri di wide dan tall, pesan lewat bridge dari klien lain, bridge mati dan hidup lagi, dan rantai penuh dengan sensor rusak dan streamer dibunuh.
 - **Demo online (Playwright + bridge):** `?demo=1` hidup sendiri, pengunjung bisa mengetik, dan skenario host palsu `demo.test/typewave/` yang meniru GitHub Pages (permintaan selain subfolder dijawab 404, jadi alamat absolut akan ketahuan).
 - **Manual (kamu):** satu sesi ketik nyata di OBS dan TikTok LIVE Studio; headset sungguhan, termasuk mematikan dan menyalakan lagi headset.
 

@@ -9,7 +9,8 @@ export const CONFIG = Object.freeze({
   }),
   zone: Object.freeze({ calmMax: 0.35, tenseMin: 0.65, calmFlow: [0.15, 0.35], flowTense: [0.65, 0.85], dwellMs: 500 }),
   sat: [0.5, 1.0],
-  type: Object.freeze({ wdth: [130, 70], wght: [300, 700], reportWdth: 100, reportWght: 500, statePx: 96, wpmPx: 64, smallPx: 28 }),
+  // Sumbu huruf HUD satu nilai tetap (lebar normal, semi-tebal): ukuran dan tebal teks tidak berubah mengikuti kondisi otak, supaya tetap terbaca di OBS.
+  type: Object.freeze({ hudWdth: 100, hudWght: 600, reportWdth: 100, reportWght: 500, statePx: 96, wpmPx: 64, smallPx: 28 }),
   spring: Object.freeze({ omega: 5, restOmega: 1.6, noSignalOmega: 3 }),
   metrics: Object.freeze({
     pauseMs: 3000, idleMs: 3000, wpmWindowMs: 10000, wpmMinWindowMs: 3000,
@@ -83,6 +84,9 @@ export const CONFIG = Object.freeze({
     }),
   }),
   hud: Object.freeze({ fadeInMs: 400, fadeOutMs: 1500 }),
+  // Status headset dari sumber EEG. Ambang kontak sama dengan DSP (eeg/dsp.py): kanal >= good dipakai untuk band power, >= fair marginal.
+  // Sumber EEG mengirim ~5 pesan per detik: diam selama staleMs berarti sumbernya mati.
+  headset: Object.freeze({ staleMs: 3000, good: 0.65, fair: 0.25 }),
   report: Object.freeze({
     showMs: 9000, dim: 0.6, wide: [1920, 1080], tall: [1080, 1920],
     margin: 0.07, hookPx: 0.075, // dikali sisi pendek; posisi vertikal di bawah dikali tinggi kanvas
