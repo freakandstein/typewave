@@ -47,6 +47,8 @@ class MindState:
         self._next_thr: Optional[float] = None
         self._last_valid: Optional[float] = None
         self._last_t: Optional[float] = None
+        self._contact: Optional[list] = None  # kualitas per kanal (TP9, AF7, AF8, TP10), dihaluskan; terpisah dari mind
+        self._contact_t: Optional[float] = None
 
     def levels(self) -> tuple:
         """(theta, alpha, beta) hasil penghalusan, 0..1."""
@@ -61,9 +63,29 @@ class MindState:
             self._last_valid = None
             self._last_t = None
             self._hr = None
+            self._contact = None
+            self._contact_t = None
+
+    def _update_contact(self, quality: list, now: float) -> None:
+        if len(quality) != 4:
+            return
+        if self._contact is None:
+            self._contact = [float(v) for v in quality]
+        else:
+            k = 1.0 - math.exp(-max(1e-3, now - self._contact_t) / self.s.contact_tau_s)
+            self._contact = [c + (float(v) - c) * k for c, v in zip(self._contact, quality)]
+        self._contact_t = now
+
+    def contact(self, now: float) -> Optional[list]:
+        """Kualitas 0..1 per kanal untuk titik sensor, atau None bila belum ada atau basi. Tersedia walau mind belum (warm-up, tidak ada kanal valid)."""
+        with self._lock:
+            if self._contact is None or now - self._contact_t > self.s.stale_s:
+                return None
+            return [round(c, 2) for c in self._contact]
 
     def update(self, b: Bands, now: float) -> None:
         with self._lock:
+            self._update_contact(b.quality, now)  # sebelum return di bawah: sensor yang buruk semua justru yang paling perlu terlihat
             if not b.alpha:
                 return  # tidak ada kanal yang valid: jangan menyegarkan
             s = self.s

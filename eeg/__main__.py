@@ -7,6 +7,7 @@ Pemakaian:
   .venv/bin/python -m eeg            pindai headset Muse lewat Bluetooth, sambung, dan kirim ke bridge
   .venv/bin/python -m eeg --scan     tampilkan headset Muse di sekitar lalu keluar
   .venv/bin/python -m eeg --fake     sumber palsu tanpa headset (untuk mencoba tampilan)
+  .venv/bin/python -m eeg --fake --fake-degrade AF7:flat@20-40   idem, sensor AF7 kontaknya buruk dari detik 20 sampai 40
 
 Satu instance per --state-dir (kunci eeg/.eeg.lock); instance kedua keluar dengan kode 3.
 """
@@ -48,6 +49,8 @@ def make_factory(args, settings, log):
     if args.fake:
         address = 'FAKE-MUSE'
         command = [sys.executable, str(FAKE), '--address', address, '--profile', args.fake]
+        for spec in args.fake_degrade or []:
+            command += ['--degrade', spec]
         return lambda failures, last_error: MuseSession(command, address, settings, log, pidfile=pidfile, marker='fake_muse_lsl')
     book = DeviceBook(args.address, args.name, args.state_dir / '.device.json', log=log)
 
@@ -100,11 +103,24 @@ def main(argv=None) -> int:
     ap.add_argument('--name', help='nama headset bila ada beberapa, mis. Muse-1A2B')
     ap.add_argument('--python', help='interpreter untuk streamer muselsl (default: Python ini)')
     ap.add_argument('--fake', nargs='?', const='mixed', choices=['relaxed', 'focused', 'tense', 'mixed'], help='sumber palsu tanpa headset')
+    ap.add_argument('--fake-degrade', action='append', default=[], metavar='KANAL:JENIS@MULAI[-AKHIR]',
+                    help='dengan --fake: sensor yang kontaknya buruk, mis. AF7:flat@20-40 (boleh diulang; lihat tools/fake_muse_lsl.py)')
     ap.add_argument('--warmup', type=float, default=15.0, help='detik warm-up sebelum mengirim (default 15)')
     ap.add_argument('--scan', action='store_true', help='tampilkan headset Muse di sekitar lalu keluar')
     ap.add_argument('--state-dir', type=Path, default=ROOT / 'eeg', help='folder cache alamat headset (.device.json) dan pidfile streamer (.streamer.pid)')
     args = ap.parse_args(argv)
+    if args.fake_degrade and not args.fake:
+        ap.error('--fake-degrade hanya berlaku bersama --fake')
     quiet_lsl()
+    if args.fake_degrade:
+        from tools.fake_muse_lsl import parse_degrade  # setelah quiet_lsl: modul ini memuat pylsl
+
+        try:
+            for spec in args.fake_degrade:
+                parse_degrade(spec)
+        except ValueError as exc:
+            print(exc, file=sys.stderr)
+            return 2
     if not args.fake:
         try:
             import muselsl  # noqa: F401

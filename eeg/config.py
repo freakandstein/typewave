@@ -29,6 +29,7 @@ class Settings:
     threshold_window_s: float = 120.0  # median arousal dari jendela ini
     threshold_margin: float = 0.03
     hr_every_s: float = 5.0
+    contact_tau_s: float = 1.5  # penghalusan kontak sensor untuk titik di halaman: kedip sesaat tidak mengubah warna
     # --- pengiriman ke bridge
     send_hz: float = 5.0
     bridge_backoff: tuple = (1.0, 2.0, 5.0)

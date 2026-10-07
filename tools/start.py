@@ -4,7 +4,7 @@
 Tiap proses diawasi: bila mati dijalankan ulang (jeda 1, 2, lalu 5 detik; direset setelah hidup stabil 30 detik), jadi bridge atau sumber
 EEG yang crash tidak menghentikan yang lain. Ctrl+C menghentikan semuanya.
 
-Pemakaian: .venv/bin/python -m tools.start [--fake [profil]] [--no-eeg] [--no-listener] [--port N] [--address A] [--name N] [--python P] [--state-dir D]
+Pemakaian: .venv/bin/python -m tools.start [--fake [profil]] [--fake-degrade KANAL:JENIS@MULAI[-AKHIR]] [--no-eeg] [--no-listener] [--port N] [--address A] [--name N] [--python P] [--state-dir D]
 """
 from __future__ import annotations
 
@@ -111,6 +111,8 @@ def build_specs(args) -> list:
         eeg = [py, '-m', 'eeg', '--bridge', f'ws://127.0.0.1:{args.port}/ws']
         if args.fake:
             eeg += ['--fake', args.fake]
+            for spec in args.fake_degrade or []:
+                eeg += ['--fake-degrade', spec]
         for flag, value in (('--address', args.address), ('--name', args.name), ('--python', args.python), ('--state-dir', args.state_dir)):
             if value:
                 eeg += [flag, value]
@@ -124,6 +126,8 @@ def main() -> None:
     ap.add_argument('--no-listener', action='store_true', help='bridge tanpa listener ketikan global (tanpa izin macOS)')
     ap.add_argument('--no-eeg', action='store_true', help='hanya bridge')
     ap.add_argument('--fake', nargs='?', const='mixed', choices=['relaxed', 'focused', 'tense', 'mixed'], help='sumber EEG palsu tanpa headset')
+    ap.add_argument('--fake-degrade', action='append', default=[], metavar='KANAL:JENIS@MULAI[-AKHIR]',
+                    help='dengan --fake: sensor yang kontaknya buruk, mis. AF7:flat@20-40 (boleh diulang)')
     ap.add_argument('--address', help='alamat BLE headset (default: dipindai otomatis)')
     ap.add_argument('--name', help='nama headset bila ada beberapa')
     ap.add_argument('--python', help='interpreter untuk streamer muselsl')

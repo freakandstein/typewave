@@ -61,6 +61,45 @@ class BridgeTest(AioHTTPTestCase):
         await a.send_str(json.dumps({'t': 'mind', 'pos': 0.4, 'alpha': 0.7, 'beta': 'x', 'theta': 0.2, 'gamma': 0.9}))
         self.assertEqual(await self.recv(b), {'t': 'mind', 'pos': 0.4, 'alpha': 0.7, 'theta': 0.2})
 
+    async def test_headset_diteruskan_tanpa_echo_dengan_bidang_tervalidasi_dan_tanpa_teks_galat(self):
+        a, b = await self.ws(), await self.ws()
+        await self.recv(a)
+        await self.recv(b)
+        await a.send_str(json.dumps({'t': 'headset', 'state': 'connected', 'contact': [1, 0.5, 0.25, 0]}))
+        self.assertEqual(await self.recv(b), {'t': 'headset', 'state': 'connected', 'contact': [1.0, 0.5, 0.25, 0.0]})
+        with self.assertRaises(asyncio.TimeoutError):
+            await a.receive(timeout=0.2)
+        await a.send_str(json.dumps({'t': 'headset', 'state': 'reconnecting', 'attempt': 2, 'error': 'Failed to connect to AA:BB:CC (rahasia)', 'x': 1}))
+        got = await self.recv(b)
+        self.assertEqual(got, {'t': 'headset', 'state': 'reconnecting', 'attempt': 2})
+        self.assertNotIn('AA:BB', json.dumps(got), 'layar siaran tidak boleh memuat teks galat')
+
+    async def test_headset_kontak_dijepit_dan_yang_salah_dibuang_tanpa_menjatuhkan_status(self):
+        a, b = await self.ws(), await self.ws()
+        await self.recv(a)
+        await self.recv(b)
+        await a.send_str(json.dumps({'t': 'headset', 'state': 'connected', 'contact': [2, -1, 0.5, 1]}))
+        self.assertEqual((await self.recv(b))['contact'], [1.0, 0.0, 0.5, 1.0])
+        for bad in ([1, 1, 1], [1, 1, 1, 1, 1], [1, 'x', 1, 1], [1, None, 1, 1], 'abcd', 5, {'a': 1}):
+            await a.send_str(json.dumps({'t': 'headset', 'state': 'connected', 'contact': bad}))
+            self.assertEqual(await self.recv(b), {'t': 'headset', 'state': 'connected'}, bad)
+        for bad in (True, 'x', None, [1]):
+            await a.send_str(json.dumps({'t': 'headset', 'state': 'reconnecting', 'attempt': bad}))
+            self.assertEqual(await self.recv(b), {'t': 'headset', 'state': 'reconnecting'}, f'percobaan {bad!r} dibuang')
+        for sent, want in ((-3, 0), (1e12, 9999), (2.6, 3), (4, 4)):
+            await a.send_str(json.dumps({'t': 'headset', 'state': 'reconnecting', 'attempt': sent}))
+            self.assertEqual((await self.recv(b))['attempt'], want, sent)
+
+    async def test_headset_status_tidak_dikenal_dibuang_dan_dihitung(self):
+        a, b = await self.ws(), await self.ws()
+        await self.recv(a)
+        await self.recv(b)
+        for bad in ['{"t":"headset"}', '{"t":"headset","state":"hacked"}', '{"t":"headset","state":7}', '{"t":"headset","state":null}']:
+            await a.send_str(bad)
+        await a.send_str(json.dumps({'t': 'key', 'code': 'KeyZ', 'at': 5}))
+        self.assertEqual((await self.recv(b))['code'], 'KeyZ', 'tidak ada headset yang lolos sebelum key ini')
+        self.assertEqual(self.bridge.dropped, 4)
+
     async def test_frame_rusak_tidak_menjatuhkan_bridge(self):
         a, b = await self.ws(), await self.ws()
         await self.recv(a)

@@ -130,13 +130,19 @@ class LauncherTest(unittest.TestCase):
 
 class BuildSpecsTest(unittest.TestCase):
     def args(self, **kw):
-        base = dict(port=8999, no_listener=True, no_eeg=False, fake='relaxed', address=None, name=None, python=None, state_dir=None)
+        base = dict(port=8999, no_listener=True, no_eeg=False, fake='relaxed', fake_degrade=None, address=None, name=None, python=None, state_dir=None)
         base.update(kw)
         return Namespace(**base)
 
     def test_state_dir_diteruskan_ke_sumber_eeg(self):
         eeg = build_specs(self.args(state_dir='/tmp/x'))[1].command
         self.assertEqual(eeg[eeg.index('--state-dir') + 1], '/tmp/x')
+
+    def test_degrade_diteruskan_ke_sumber_eeg_palsu(self):
+        eeg = build_specs(self.args(fake_degrade=['AF7:flat@20-40', 'TP9:noisy@5']))[1].command
+        pairs = [(eeg[i], eeg[i + 1]) for i in range(len(eeg) - 1) if eeg[i] == '--fake-degrade']
+        self.assertEqual(pairs, [('--fake-degrade', 'AF7:flat@20-40'), ('--fake-degrade', 'TP9:noisy@5')])
+        self.assertNotIn('--fake-degrade', build_specs(self.args())[1].command)
 
     def test_tanpa_state_dir_opsinya_tidak_dikirim(self):
         self.assertNotIn('--state-dir', build_specs(self.args())[1].command)

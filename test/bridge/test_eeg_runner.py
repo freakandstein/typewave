@@ -13,6 +13,7 @@ from aiohttp import web
 
 from bridge.bridge import create_app
 from eeg.config import DEFAULT
+from eeg.dsp import Bands
 from eeg.runner import Runner
 from eeg.stream import MuseSession
 from test.bridge.test_bridge import make_root
@@ -56,6 +57,7 @@ class RunnerTest(unittest.IsolatedAsyncioTestCase):
         self.url = f'ws://127.0.0.1:{self.port}/ws'
         self.bridge = await start_bridge(self.port)
         self.msgs = []  # (waktu, pesan mind) yang diterima klien lain dari bridge
+        self.headset = []  # (waktu, pesan headset): status sambungan dan kontak sensor
         self.http = aiohttp.ClientSession()
         self.rx = await self.http.ws_connect(self.url)
         self.rx_task = asyncio.create_task(self._collect())
@@ -68,6 +70,8 @@ class RunnerTest(unittest.IsolatedAsyncioTestCase):
                 d = json.loads(m.data)
                 if d.get('t') == 'mind':
                     self.msgs.append((time.monotonic(), d))
+                elif d.get('t') == 'headset':
+                    self.headset.append((time.monotonic(), d))
 
     async def asyncTearDown(self):
         if self.runner is not None:
@@ -123,6 +127,54 @@ class RunnerTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.factory.sessions), 2)
         self.assertIsNotNone(self.factory.sessions[0]._proc.poll(), 'streamer lama sudah mati, tidak ada yatim')
 
+    def with_contact(self):
+        return [m for _, m in self.headset if m['state'] == 'connected' and 'contact' in m]
+
+    async def test_status_headset_mengalir_terus_dengan_kontak_semua_sensor_bagus(self):
+        self.start('hs', [[]])
+        self.assertTrue(await self.until(lambda: len(self.with_contact()) >= 10, 25), f'pesan: {[m for _, m in self.headset][-3:]}')
+        m = self.with_contact()[-1]
+        self.assertEqual(m['t'], 'headset')
+        self.assertEqual(len(m['contact']), 4)
+        self.assertTrue(all(0.65 <= c <= 1.0 for c in m['contact']), m)
+        times = [t for t, m in self.headset if m['state'] == 'connected']
+        rate = (len(times) - 1) / (times[-1] - times[0])
+        self.assertTrue(3.5 < rate < 6.5, f'sekitar 5 pesan per detik (sekaligus tanda sumber EEG hidup), dapat {rate:.1f}')
+
+    async def test_putus_dan_tersambung_ulang_terlihat_dengan_nomor_percobaan_tanpa_teks_galat(self):
+        self.start('hsputus', [['--exit-after', '8.0'], []])
+        self.assertTrue(await self.until(lambda: any(m['state'] == 'reconnecting' for _, m in self.headset), 30), 'putus harus terlihat di halaman')
+        first = next(i for i, (_, m) in enumerate(self.headset) if m['state'] == 'reconnecting')
+        r = self.headset[first][1]
+        self.assertEqual(r['attempt'], 1)
+        self.assertEqual(set(r), {'t', 'state', 'attempt'}, 'teks galat (bisa memuat alamat Bluetooth) tidak boleh sampai ke layar siaran')
+        self.assertTrue(await self.until(lambda: any(m['state'] == 'connected' and 'contact' in m for _, m in self.headset[first:]), 30),
+                        'tersambung ulang: status kembali connected dengan kontak')
+        self.assertTrue(all('contact' not in m for _, m in self.headset if m['state'] == 'reconnecting'), 'selama putus tidak ada kontak yang basi')
+
+    async def test_satu_sensor_buruk_terbaca_buruk_dan_mind_tetap_mengalir_dari_sensor_lain(self):
+        self.start('hssatu', [['--degrade', 'AF7:flat@0']])
+        self.assertTrue(await self.until(lambda: len(self.with_contact()) >= 3, 25))
+        c = self.with_contact()[-1]['contact']
+        self.assertLess(c[1], 0.25, c)
+        self.assertTrue(all(v >= 0.65 for i, v in enumerate(c) if i != 1), c)
+        self.assertTrue(await self.until(lambda: len(self.msgs) >= 3, 25), 'tiga sensor lain cukup untuk mind')
+
+    async def test_semua_sensor_buruk_titik_tetap_terkirim_walau_mind_tidak_ada(self):
+        flat = [x for ch in ('TP9', 'AF7', 'AF8', 'TP10') for x in ('--degrade', f'{ch}:flat@0')]
+        self.start('hssemua', [flat])
+        self.assertTrue(await self.until(lambda: len(self.with_contact()) >= 3, 25), 'headset baru dipasang: justru saat ini titik sensor dibutuhkan')
+        self.assertTrue(all(v < 0.25 for v in self.with_contact()[-1]['contact']))
+        await asyncio.sleep(FAST.warmup_s + 2.0)
+        self.assertEqual(self.msgs, [], 'tanpa sensor yang layak tidak ada mind: halaman menampilkan "cek sensor", bukan data palsu')
+
+    async def test_nomor_percobaan_naik_selama_gagal_berulang_lalu_titik_kembali(self):
+        self.start('hsgagal', [['--fail-start'], ['--fail-start'], []])
+        self.assertTrue(await self.until(lambda: len(self.with_contact()) >= 1, 40), f'status: {self.statuses()}')
+        attempts = [m['attempt'] for _, m in self.headset if m['state'] == 'reconnecting']
+        self.assertEqual(sorted(set(attempts)), [1, 2], 'gagal dua kali: percobaan 1 lalu 2 terlihat di halaman')
+        self.assertEqual(attempts, sorted(attempts), 'nomor tidak pernah turun selama belum tersambung')
+
     async def test_stall_diam_diam_memicu_sambung_ulang_dan_streamer_macet_dimatikan(self):
         self.start('macet', [['--stall-after', '3.0'], []])
         self.assertTrue(await self.until(lambda: 'reconnecting' in self.statuses(), 20), 'stall harus terdeteksi')
@@ -173,6 +225,23 @@ class RunnerTest(unittest.IsolatedAsyncioTestCase):
         self.assertLess(time.monotonic() - t0, 10.0, 'tidak boleh menunggu thread pemroses sampai batas 15 detik')
         self.assertIsNotNone(proc.poll(), 'streamer tidak boleh jadi yatim')
         self.assertEqual(self.statuses()[-1], 'stopped')
+
+
+class HeadsetMessageTest(unittest.TestCase):
+    """Pesan headset langsung dari Runner, tanpa bridge: bridge menyaring bidang tak dikenal, jadi kebocoran di runner tidak terlihat dari sisi penerima."""
+
+    def test_pesan_tiap_status_hanya_memuat_bidang_yang_boleh_tampil_di_layar_siaran(self):
+        r = Runner('ws://127.0.0.1:1/ws', lambda failures, last_error: None, FAST, log=lambda m: None)
+        self.assertEqual(r.headset_message(0.0), {'t': 'headset', 'state': 'connecting'})
+        r._on_status('connecting', {})
+        r._on_status('connected', {})
+        self.assertEqual(r.headset_message(0.0), {'t': 'headset', 'state': 'connected'}, 'belum ada kontak')
+        r.state.update(Bands(quality=[1.0, 0.5, 0.2, 0.9]), 1.0)
+        self.assertEqual(r.headset_message(1.0), {'t': 'headset', 'state': 'connected', 'contact': [1.0, 0.5, 0.2, 0.9]})
+        r._on_status('reconnecting', {'error': 'Failed to connect to AA:BB:CC:DD:EE:FF', 'retry_in': 3.0, 'attempt': 2})
+        self.assertEqual(r.headset_message(1.0), {'t': 'headset', 'state': 'reconnecting', 'attempt': 2}, 'tanpa teks galat, tanpa kontak basi')
+        r._on_status('stopped', {})
+        self.assertEqual(r.headset_message(1.0), {'t': 'headset', 'state': 'stopped'})
 
 
 if __name__ == '__main__':

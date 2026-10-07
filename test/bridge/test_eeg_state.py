@@ -151,5 +151,42 @@ class MindStateTest(unittest.TestCase):
         self.assertIsNone(st.snapshot(t + 0.6))
 
 
+class ContactTest(unittest.TestCase):
+    """Kontak sensor: kualitas per kanal (TP9, AF7, AF8, TP10) untuk titik di halaman, terpisah dari mind."""
+
+    def test_tersedia_walau_semua_kanal_buruk_dan_masih_warmup(self):
+        st = MindState()
+        st.update(Bands(quality=[0.0, 1.0, 0.5, 1.0]), 1.0)  # tidak ada kanal valid: mind tidak diperbarui
+        self.assertIsNone(st.snapshot(1.0))
+        self.assertEqual(st.contact(1.0), [0.0, 1.0, 0.5, 1.0], 'justru saat headset baru dipasang titik sensor paling dibutuhkan')
+
+    def test_basi_bila_tidak_ada_pembaruan_dan_hilang_saat_koneksi_putus(self):
+        st = MindState()
+        st.update(Bands(quality=[1.0] * 4), 1.0)
+        self.assertIsNotNone(st.contact(1.0 + DEFAULT.stale_s - 0.1))
+        self.assertIsNone(st.contact(1.0 + DEFAULT.stale_s + 0.1), 'tanpa pembaruan: itu bukan kondisi sensor yang sekarang')
+        st.update(Bands(quality=[1.0] * 4), 5.0)
+        st.lost()
+        self.assertIsNone(st.contact(5.0))
+
+    def test_dihaluskan_satu_tick_buruk_tidak_membalik_tetapi_yang_berlanjut_membalik_hanya_kanal_itu(self):
+        st = MindState()
+        t = run(st, 5.0, lambda i, t: Bands(quality=[1.0] * 4))
+        t += TICK
+        st.update(Bands(quality=[1.0, 0.0, 1.0, 1.0]), t)  # satu tick buruk, mis. kedip
+        self.assertGreater(st.contact(t)[1], 0.65, 'kedip sesaat tidak boleh mengubah warna titik')
+        t = run(st, 5.0, lambda i, t: Bands(quality=[1.0, 0.0, 1.0, 1.0]), t0=t)
+        c = st.contact(t)
+        self.assertLess(c[1], 0.25, 'sensor yang terus buruk harus akhirnya terbaca buruk')
+        self.assertEqual([c[0], c[2], c[3]], [1.0, 1.0, 1.0], 'kanal lain tidak ikut')
+
+    def test_kualitas_yang_tidak_lengkap_diabaikan_dan_nilai_dibulatkan(self):
+        st = MindState()
+        st.update(Bands(quality=[0.123456, 1.0, 1.0, 1.0]), 1.0)
+        self.assertEqual(st.contact(1.0)[0], 0.12)
+        st.update(Bands(quality=[0.0]), 1.2)  # bukan empat kanal: tidak dipercaya
+        self.assertEqual(st.contact(1.2)[1], 1.0)
+
+
 if __name__ == '__main__':
     unittest.main()

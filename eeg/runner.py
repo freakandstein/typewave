@@ -2,7 +2,11 @@
 
 Alur: Supervisor menyambung ke headset (MuseSession) dan menjalankan loop pemrosesan di thread sendiri; loop itu mengisi MindState;
 tugas asyncio mengirim snapshot MindState ke bridge 5 kali per detik lewat BridgeLink (yang juga reconnect otomatis). Selama headset
-putus atau masih warm-up tidak ada pesan terkirim, jadi halaman jatuh ke "no signal" dan pulih sendiri saat data kembali.
+putus atau masih warm-up tidak ada pesan mind, jadi halaman jatuh ke "no signal" dan pulih sendiri saat data kembali.
+
+Pesan `headset` (status sambungan + kontak tiap sensor) dikirim terpisah dari mind pada kecepatan yang sama, juga saat mind tidak ada: justru
+ketika headset baru dipasang (semua sensor buruk, tidak ada mind) halaman perlu tahu penyebabnya. Pesan itu sekaligus detak "sumber EEG hidup".
+Teks galat sengaja tidak ikut: bisa memuat alamat Bluetooth, dan halaman ini tampil di layar siaran.
 """
 from __future__ import annotations
 
@@ -58,12 +62,23 @@ class Runner:
         self.link = BridgeLink(bridge_url, settings, log)
         self.supervisor = Supervisor(open_session, settings, on_status=self._on_status, log=log, clock=clock)
         self.statuses: list = []
+        self.headset: dict = {'state': 'connecting'}  # status sambungan untuk pesan headset (diganti utuh: aman dibaca dari thread lain)
 
     def stop(self) -> None:
         self.supervisor.cancel()
 
+    def headset_message(self, now: float) -> dict:
+        """Status sambungan headset dan, selama tersambung, kualitas tiap sensor (TP9, AF7, AF8, TP10)."""
+        msg = {'t': 'headset', **self.headset}
+        if msg['state'] == 'connected':
+            contact = self.state.contact(now)
+            if contact is not None:
+                msg['contact'] = contact
+        return msg
+
     def _on_status(self, status: str, info: dict) -> None:
         self.statuses.append((status, info))
+        self.headset = {'state': status, 'attempt': int(info.get('attempt', 1))} if status == 'reconnecting' else {'state': status}
         if status == 'connecting':
             self.log('menyambung ke headset...')
         elif status == 'connected':
@@ -98,9 +113,11 @@ class Runner:
     async def _send_loop(self) -> None:
         period = 1.0 / self.s.send_hz
         while True:
-            msg = self.state.snapshot(self.clock())
+            now = self.clock()
+            msg = self.state.snapshot(now)
             if msg is not None:
                 await self.link.send(msg)
+            await self.link.send(self.headset_message(now))
             await asyncio.sleep(period)
 
     async def run(self) -> None:

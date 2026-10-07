@@ -50,13 +50,26 @@ class ArgumentsTest(unittest.TestCase):
     def test_help_lewat_python_m_eeg_menyebut_semua_opsi(self):
         r = subprocess.run([sys.executable, '-m', 'eeg', '--help'], capture_output=True, text=True, cwd=ROOT, timeout=60)
         self.assertEqual(r.returncode, 0, r.stderr)
-        for flag in ('--bridge', '--address', '--name', '--python', '--fake', '--warmup', '--scan', '--state-dir'):
+        for flag in ('--bridge', '--address', '--name', '--python', '--fake', '--fake-degrade', '--warmup', '--scan', '--state-dir'):
             self.assertIn(flag, r.stdout)
 
     def test_profil_fake_tidak_dikenal_ditolak(self):
         rc, _, err = run_main('--fake', 'bogus')
         self.assertEqual(rc, 2)
         self.assertIn('invalid choice', err)
+
+    def test_degrade_yang_salah_ditolak_dengan_pesan_jelas_dan_hanya_berlaku_bersama_fake(self):
+        state = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, state, ignore_errors=True)
+        with mock.patch.object(cli.asyncio, 'run', side_effect=lambda coro: coro.close()):
+            rc, _, err = run_main('--fake', '--fake-degrade', 'AF7:bogus@1', '--state-dir', state)
+            self.assertEqual(rc, 2)
+            self.assertIn('degrade tidak valid', err)
+            rc, _, err = run_main('--fake-degrade', 'AF7:flat@1', '--state-dir', state)
+            self.assertEqual(rc, 2)
+            self.assertIn('--fake', err)
+            rc, _, err = run_main('--fake', '--fake-degrade', 'AF7:flat@1-5', '--fake-degrade', 'TP9:noisy@2', '--state-dir', state)
+            self.assertEqual(rc, 0, err)
 
     def test_muselsl_belum_terpasang_memberi_petunjuk_pemasangan(self):
         with mock.patch.dict(sys.modules, {'muselsl': None}):
@@ -138,7 +151,7 @@ class FactoryTest(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
 
     def args(self, **kw):
-        base = dict(fake=None, address=None, name=None, python=None, state_dir=self.tmp, warmup=15.0, bridge='ws://x/ws', scan=False)
+        base = dict(fake=None, fake_degrade=None, address=None, name=None, python=None, state_dir=self.tmp, warmup=15.0, bridge='ws://x/ws', scan=False)
         base.update(kw)
         return Namespace(**base)
 
@@ -161,6 +174,12 @@ class FactoryTest(unittest.TestCase):
         self.assertEqual(s.command[s.command.index('--profile') + 1], 'relaxed')
         self.assertEqual(s.marker, 'fake_muse_lsl')
         self.assertEqual(s.pidfile, self.tmp / '.streamer.pid')
+
+    def test_mode_fake_meneruskan_degrade_ke_streamer_palsu_dan_tanpa_degrade_tidak_menambah_apa_pun(self):
+        cmd = cli.make_factory(self.args(fake='relaxed', fake_degrade=['AF7:flat@5-9', 'TP9:noisy@2']), DEFAULT, lambda m: None)(0, None).command
+        pairs = [(cmd[i], cmd[i + 1]) for i in range(len(cmd) - 1) if cmd[i] == '--degrade']
+        self.assertEqual(pairs, [('--degrade', 'AF7:flat@5-9'), ('--degrade', 'TP9:noisy@2')])
+        self.assertNotIn('--degrade', cli.make_factory(self.args(fake='relaxed'), DEFAULT, lambda m: None)(0, None).command)
 
     def test_headset_asli_alamat_dari_buku_alamat_dan_perintah_muselsl(self):
         calls, inits = [], []

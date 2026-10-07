@@ -13,6 +13,7 @@ from aiohttp import WSMsgType, web
 ROOT = Path(__file__).resolve().parent.parent
 MAX_MSG = 4096
 MODS = ('shift', 'ctrl', 'alt', 'cmd')
+HEADSET_STATES = ('connecting', 'connected', 'reconnecting', 'stopped')
 STATIC_DIRS = ('src', 'assets', 'replay')
 ALLOWED_HOSTS = ('127.0.0.1', 'localhost')
 
@@ -117,6 +118,23 @@ class Bridge:
                 v = _num(msg.get(k))
                 if v is not None:
                     out[k] = v
+            await self.broadcast(out, exclude=ws)
+        elif t == 'headset':
+            # Status sambungan headset dan kontak sensor dari sumber EEG. Hanya bidang yang dikenal dan tervalidasi yang diteruskan:
+            # halaman ini tampil di layar siaran, jadi teks bebas (mis. pesan galat dengan alamat Bluetooth) tidak boleh ikut.
+            state = msg.get('state')
+            if state not in HEADSET_STATES:
+                self.dropped += 1
+                return
+            out = {'t': 'headset', 'state': state}
+            attempt = _num(msg.get('attempt'))
+            if attempt is not None:
+                out['attempt'] = max(0, min(9999, int(round(attempt))))
+            contact = msg.get('contact')
+            if isinstance(contact, list) and len(contact) == 4:
+                values = [_num(v) for v in contact]
+                if all(v is not None for v in values):
+                    out['contact'] = [min(1.0, max(0.0, v)) for v in values]
             await self.broadcast(out, exclude=ws)
         elif t == 'ctl':
             if isinstance(msg.get('pause'), bool):
