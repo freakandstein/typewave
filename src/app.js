@@ -46,7 +46,7 @@ export function start({ canvas, hudRoot, reportCanvas, panel, win }) {
   const perf = { frame: new Float32Array(PERF_N), draw: new Float32Array(PERF_N), n: 0 };
   const trace = { v: new Float32Array(PERF_N), n: 0 };
   const dbg = { at: -1e9, str: '' };
-  const drive = { pos: 0.5, density: 0, noSig: 1, theta: null, alpha: null, beta: null }; // masukan ilustrasi otak per frame (objek dipakai ulang)
+  const drive = { pos: 0.5, density: 0, noSig: 1, theta: null, alpha: null, beta: null, spin: 1 }; // masukan ilustrasi otak per frame (objek dipakai ulang); spin = pengali kecepatan putar
   let g, rb, beads, fp, brain = null, sim = null;
   let breathe = 0, lastTs = 0, lastDt = 0.016, maxDtSeen = 0, maxRawGap = 0, firstFrame = true;
 
@@ -86,7 +86,7 @@ export function start({ canvas, hudRoot, reportCanvas, panel, win }) {
     rb = createRibbon(g.L);
     beads = createBeads();
     fp = createFootprint();
-    brain = params.brain ? createBrain() : null;
+    brain = params.brain ? createBrain(undefined, brain ? brain.yaw : undefined) : null; // ukuran jendela berubah: sudut putar otak dilanjutkan, tidak melompat
     hud.setLayout(layout, g.k);
     doc.documentElement.classList.toggle('transparent', params.transparent);
     fillRp(metrics.snapshot(Date.now()), Date.now());
@@ -288,6 +288,8 @@ export function start({ canvas, hudRoot, reportCanvas, panel, win }) {
       setMind: (m) => bus.emit('mind', m),
       setAuto: (on) => { if (sim) sim.setAuto(on); },
       simulateStall: (ms) => { lastTs -= ms; },
+      brainSpin: (v) => { drive.spin = v; }, // pengali kecepatan putar otak (0 menghentikan), untuk tes
+      brainYaw: (y) => { if (brain) brain.yaw = y; }, // sudut putar otak (radian), untuk tes dan tangkapan layar
       report: () => metrics.summary(Date.now()),
       perf: perfSummary,
       posTrace: () => {

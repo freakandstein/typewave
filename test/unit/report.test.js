@@ -24,11 +24,11 @@ test('buildReport en: angka kartu cocok dengan statistik acuan sesi sintetis', (
   assert.deepEqual(rep.lines, [
     '2 min 30 s session',
     `${Math.round(e.avgWpm)} wpm average, ${Math.round(e.peakWpm)} peak`,
-    '1 min 10 s in flow',
+    '1 min 10 s neutral',
     'longest pause 12 s',
     '7 backspaces',
   ]);
-  assert.equal(rep.hook, '1 min 10 s in flow');
+  assert.equal(rep.hook, '1 min 10 s neutral');
   assert.equal(rep.strip.length, 150 * 4);
   assert.equal(rep.wpm.length, 150);
   assert.ok(Math.abs(rep.wpmMax - e.peakWpm) < 0.05);
@@ -40,17 +40,17 @@ test('buildReport id', () => {
   assert.deepEqual(rep.lines, [
     'sesi 2 menit 30 detik',
     `rata-rata ${Math.round(e.avgWpm)} wpm, puncak ${Math.round(e.peakWpm)}`,
-    '1 menit 10 detik di flow',
+    '1 menit 10 detik netral',
     'jeda terpanjang 12 detik',
     '7 backspace',
   ]);
-  assert.equal(rep.hook, 'flow selama 1 menit 10 detik');
+  assert.equal(rep.hook, 'netral selama 1 menit 10 detik');
 });
 
 test('hook tanpa menit di flow memakai state dominan; tanpa data mind memakai durasi', () => {
   const calm = Array.from({ length: 480 }, (_, i) => ({ t: (i + 1) * 1000, pos: 0.2, wpm: 0, hr: 70, idle: true }));
   assert.equal(hookText({ flowSec: 0, log: calm, durationMs: 480000 }, 'en'), 'mostly calm for 8 min');
-  assert.equal(hookText({ flowSec: 0, log: calm, durationMs: 480000 }, 'id'), 'dominan calm selama 8 menit');
+  assert.equal(hookText({ flowSec: 0, log: calm, durationMs: 480000 }, 'id'), 'dominan tenang selama 8 menit');
   const none = Array.from({ length: 5 }, (_, i) => ({ t: (i + 1) * 1000, pos: null, wpm: 0, hr: null, idle: true }));
   assert.equal(hookText({ flowSec: 0, log: none, durationMs: 5000 }, 'en'), '5 s session');
   assert.equal(hookText({ flowSec: 0, log: none, durationMs: 5000 }, 'id'), 'sesi selama 5 detik');

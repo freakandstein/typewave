@@ -19,12 +19,12 @@
 </p>
 
 <p align="center">
-  <img src="docs/media/hero.gif" width="800" alt="Pita cahaya dan ilustrasi otak berubah dari calm ke flow ke tense saat mengetik">
+  <img src="docs/media/hero.gif" width="800" alt="Pita cahaya dan otak 3D yang berputar perlahan berubah dari calm ke neutral ke tense saat mengetik">
 </p>
 
 ## Sekilas
 
-Satu pita cahaya bereaksi pada dua hal sekaligus: **ketikanmu** (setiap tombol di aplikasi mana pun) dan **kondisi otakmu** dari headset EEG Muse. Warna, bentuk gelombang, dan ilustrasi otak mengikuti kondisi tenang (calm), mengalir (flow), atau tegang (tense). Halaman dipasang sebagai Browser Source di OBS, jadi cocok untuk konten typing, ASMR keyboard mechanical, dan live TikTok.
+Satu pita cahaya bereaksi pada dua hal sekaligus: **ketikanmu** (setiap tombol di aplikasi mana pun) dan **kondisi otakmu** dari headset EEG Muse. Warna, bentuk gelombang, dan ilustrasi otak mengikuti kondisi tenang (calm), netral (neutral), atau tegang (tense). Halaman dipasang sebagai Browser Source di OBS, jadi cocok untuk konten typing, ASMR keyboard mechanical, dan live TikTok.
 
 - **Dua sumber, satu gambar:** kerapatan dan irama ketikan mengatur tinggi, kecepatan, dan ketebalan pita. EEG mengatur warna, kekasaran, bentuk gelombang, dan terang tiga jenis garis di ilustrasi otak (theta, alpha, beta).
 - **Siap OBS:** bingkai horizontal 21:9 (bisa 16:9 sampai 3:1) dan vertikal 9:16 untuk TikTok. Kartu laporan sesi bisa diekspor sebagai PNG.
@@ -32,7 +32,7 @@ Satu pita cahaya bereaksi pada dua hal sekaligus: **ketikanmu** (setiap tombol d
 - **Status headset terlihat:** halaman menulis apa yang sedang terjadi (menyambung, menyambung ulang percobaan ke-N, menyiapkan sinyal, cek sensor), dan empat titik kecil menunjukkan tiap sensor Muse: hijau = menempel baik, kuning = kurang bagus, cincin merah = buruk. Berguna saat memasang headset dan saat sambungan putus.
 - **Privat:** hanya kode tombol fisik yang dipakai (tidak pernah karakter), dan tidak ada ketikan yang disimpan.
 
-**In English:** TypeWave draws one ribbon of light that reacts to every keystroke on your machine (any app) and to your brain state from a Muse EEG headset. Colors, wave shape, and a brain illustration (three line groups for theta, alpha, and beta) follow calm, flow, and tense. It runs as an OBS Browser Source (horizontal or 9:16 vertical for TikTok), reads the headset over Bluetooth with automatic reconnect, and needs no other EEG server. No headset? Try the [live demo](https://freakandstein.github.io/typewave/) or run `npm run start:fake`. A small head icon shows whether each of the four sensors has good contact, and the HUD says what the headset link is doing (connecting, reconnecting, attempt N). Only physical key codes are used, never characters, and nothing is written to disk.
+**In English:** TypeWave draws one ribbon of light that reacts to every keystroke on your machine (any app) and to your brain state from a Muse EEG headset. Colors, wave shape, and a slowly rotating 3D brain drawn in thin see-through lines (three line groups for theta, alpha, and beta) follow calm, neutral, and tense. It runs as an OBS Browser Source (horizontal or 9:16 vertical for TikTok), reads the headset over Bluetooth with automatic reconnect, and needs no other EEG server. No headset? Try the [live demo](https://freakandstein.github.io/typewave/) or run `npm run start:fake`. A small head icon shows whether each of the four sensors has good contact, and the HUD says what the headset link is doing (connecting, reconnecting, attempt N). Only physical key codes are used, never characters, and nothing is written to disk.
 
 ## Galeri
 
@@ -47,7 +47,7 @@ Satu pita cahaya bereaksi pada dua hal sekaligus: **ketikanmu** (setiap tombol d
   <a href="docs/media/tall-tense.png"><img src="docs/media/tall-tense.png" width="19%" alt="tense vertikal"></a>
   <a href="docs/media/report-tall.png"><img src="docs/media/report-tall.png" width="19%" alt="kartu laporan sesi"></a>
 </p>
-<p align="center"><sub>Tenang (calm), mengalir (flow), tegang (tense) di layout horizontal dan vertikal 9:16, dan kartu laporan sesi hasil ekspor aplikasi.</sub></p>
+<p align="center"><sub>Tenang (calm), netral (neutral), tegang (tense) di layout horizontal dan vertikal 9:16, dan kartu laporan sesi hasil ekspor aplikasi.</sub></p>
 
 ## Cara kerja
 
@@ -122,9 +122,9 @@ Bentuk dasar gelombang dibuat dari rumus sinus; yang membawa data adalah tinggi,
 
 Teks HUD (kondisi, wpm, detak jantung, status) selalu sama besar dan tebal, apa pun kondisi otaknya, dan angkanya berlebar tetap sehingga tidak bergoyang saat berganti, supaya tetap terbaca di OBS. HUD tidak menampilkan timer sesi. Ketebalannya satu angka di `CONFIG.type.hudWght` di `src/config.js` (bawaan 600; naikkan sampai 900 untuk lebih tebal).
 
-Ilustrasi otak di atas tengah adalah hiasan, bukan peta aktivitas otak: sumber EEG hanya mengirim angka gabungan, bukan per area, jadi titik yang menyala saat mengetik tidak menunjukkan bagian otak yang sebenarnya. Bentuknya dibuat oleh `node tools/gen_brain.mjs` (seed tetap, hasilnya `src/data/brain.js`); ukuran dan posisinya ada di `CONFIG.layout.*.brain` di `src/config.js`. Matikan dengan `?brain=0`.
+Ilustrasi otak di atas tengah adalah otak 3D dari garis tipis yang selalu berputar perlahan (sekitar 20 detik per putaran, kecepatannya tetap dan tidak mengikuti ketikan atau kondisi otak) dan digambar tembus pandang: garis di belakang tetap tampak, hanya lebih redup. Ini hiasan, bukan peta aktivitas otak: sumber EEG hanya mengirim angka gabungan, bukan per area, jadi titik yang menyala saat mengetik tidak menunjukkan bagian otak yang sebenarnya. Bentuknya dibuat oleh `node tools/gen_brain.mjs` (seed tetap, sekitar 30 detik, hasilnya `src/data/brain.js`); ukuran dan posisinya ada di `CONFIG.layout.*.brain` di `src/config.js`, kecepatan putar di `CONFIG.brain.spin`, dan terang menurut kedalaman di `CONFIG.brain.depth`. Matikan dengan `?brain=0`.
 
-Tiga jenis garis otak mengikuti tiga gelombang: garis panjang untuk theta (lambat), sedang untuk alpha, pendek untuk beta (cepat). Tiap jenis menerangi diri pelan-pelan sesuai level gelombangnya saat itu (level dari sumber EEG dibandingkan dengan riwayat dirimu sendiri beberapa detik terakhir, jadi terang berarti "sedang tinggi dibanding barusan"), dan titik cahaya ketikan lebih sering memilih jenis yang levelnya tinggi. Ini metafora, bukan peta: letak garis tidak mewakili area otak. Otak kecil di kanan bawah tidak ikut dan terangnya tetap. Tanpa data gelombang semua jenis sama terang.
+Tiga jenis garis otak mengikuti tiga gelombang: garis panjang untuk theta (lambat), sedang untuk alpha, pendek untuk beta (cepat). Tiap jenis menerangi diri pelan-pelan sesuai level gelombangnya saat itu (level dari sumber EEG dibandingkan dengan riwayat dirimu sendiri beberapa detik terakhir, jadi terang berarti "sedang tinggi dibanding barusan"), dan titik cahaya ketikan lebih sering memilih jenis yang levelnya tinggi. Ini metafora, bukan peta: letak garis tidak mewakili area otak. Otak kecil di belakang-bawah tidak ikut dan terangnya tetap. Tanpa data gelombang semua jenis sama terang.
 
 ## Izin macOS
 

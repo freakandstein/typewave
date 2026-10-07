@@ -10,7 +10,8 @@ test('label demoHint ada di en dan id', () => {
 
 test('label en dan id', () => {
   assert.equal(labelFor('calm', 'en'), 'calm');
-  assert.equal(labelFor('flow', 'id'), 'mengalir');
+  assert.equal(labelFor('flow', 'id'), 'netral');
+  assert.equal(labelFor('flow', 'en'), 'neutral');
   assert.equal(labelFor('tense', 'id'), 'tegang');
   assert.equal(labelFor('noSignal', 'id'), 'tanpa sinyal');
   assert.equal(labelFor('paused', 'id'), 'jeda');

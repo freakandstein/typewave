@@ -13,6 +13,8 @@ after(async () => { await browser?.close(); await bridge?.stop(); });
 const url = (q = '') => `${bridge.base}/?debug=1${q}`;
 const WIDE = { width: 1280, height: 549 }; // = bingkai 21:9 bawaan pada lebar 1280, jadi bingkai persis memenuhi jendela
 const TALL = { width: 720, height: 1280 };
+// Kotak otak pada bingkai WIDE: halaman memakai tata letak ringkas (createGeom dengan compact), jadi tes memakai yang sama; satu tes memastikan kecocokannya dengan halaman.
+const WIDE_BOX = brainRect(createGeom(WIDE.width, WIDE.height, 'wide', undefined, false, true));
 const state = (page) => page.evaluate(() => window.__typewave.state());
 const pixel = (page, x, y) => page.evaluate(([px, py]) => {
   const d = document.getElementById('scene').getContext('2d').getImageData(px, py, 1, 1).data;
@@ -155,7 +157,7 @@ test('transparent=1 menghilangkan ground; lang=id mengganti label', async () => 
   assert.equal(await page.locator('#hud-state').textContent(), 'tenang');
   await page.evaluate(() => window.__typewave.setMind({ pos: 0.5 }));
   await page.waitForTimeout(2800);
-  assert.equal(await page.locator('#hud-state').textContent(), 'mengalir');
+  assert.equal(await page.locator('#hud-state').textContent(), 'netral');
   await page.close();
 });
 
@@ -223,7 +225,7 @@ test('tanpa ?layout= di jendela potret: bingkai horizontal 21:9 utuh di tengah, 
   await page.close();
 });
 
-test('bingkai bawaan 21:9 di jendela 16:9: tinggi 24% lebih pendek, bilah di atas dan bawah; ?ratio=16:9 mengembalikan tinggi penuh dengan tata letak lama', async () => {
+test('bingkai bawaan 21:9 di jendela 16:9: tinggi 24% lebih pendek, bilah di atas dan bawah; ?ratio=16:9 mengembalikan tinggi penuh dengan tata letak 16:9', async () => {
   const win = { width: 1280, height: 720 };
   const a = await openPage(browser, url('&ws=off'), { viewport: win, waitHello: false });
   let s = await state(a.page);
@@ -234,7 +236,7 @@ test('bingkai bawaan 21:9 di jendela 16:9: tinggi 24% lebih pendek, bilah di ata
   const b = await openPage(browser, url('&ws=off&ratio=16:9'), { viewport: win, waitHello: false });
   s = await state(b.page);
   assert.deepEqual([s.layout, s.W, s.H], ['wide', 1280, 720]);
-  assert.ok(Math.abs(s.center - 0.58 * 720) < 0.5 && Math.abs(s.spawnC - 0.31 * 720) < 0.5, `tata letak 16:9 lama: pita ${s.center}, bead ${s.spawnC}`);
+  assert.ok(Math.abs(s.center - 0.58 * 720) < 0.5 && Math.abs(s.spawnC - (384.8 / 1080) * 720) < 0.5, `tata letak 16:9: pita ${s.center}, bead ${s.spawnC}`);
   await b.page.close();
 });
 
@@ -375,7 +377,7 @@ test('tanpa keyboard visual secara default; ?keyboard=1 menampilkan siluetnya la
 });
 
 test('ilustrasi otak tampil di atas tengah dengan warna sesuai grade; ?brain=0 menyembunyikannya', async () => {
-  const R = brainRect(createGeom(WIDE.width, WIDE.height, 'wide'));
+  const R = WIDE_BOX;
   const scan = async (query, pos) => {
     const { page } = await openPage(browser, url(`&ws=off${query}`), { viewport: WIDE, waitHello: false });
     await page.evaluate((p) => window.__typewave.setMind({ pos: p, hr: 70, q: 0.9 }), pos);
@@ -408,13 +410,13 @@ test('ilustrasi otak tampil di atas tengah dengan warna sesuai grade; ?brain=0 m
 test('percikan otak: satu per ketikan, repeat dibatasi, kapasitas terjaga; ?brain=0 tanpa otak', async () => {
   const { page, errors } = await openPage(browser, url('&ws=off'), { viewport: WIDE, waitHello: false });
   assert.equal((await state(page)).brain.sparks, 0);
-  await page.evaluate(() => { for (const c of ['KeyA', 'KeyS', 'KeyD']) window.__typewave.press(c); });
-  assert.equal((await state(page)).brain.sparks, 3);
-  await page.evaluate(() => { for (let i = 0; i < 40; i++) window.__typewave.press('KeyG', { rep: true }); });
-  const extra = (await state(page)).brain.sparks - 3;
+  // tiap ketikan dan pembacaan jumlah percikan dalam satu panggilan: tanpa frame di antaranya, jadi percikan yang kebetulan mulai di ujung garis belum habis
+  const sparksAfter = (keys, opts = {}) => page.evaluate(([list, o]) => { for (const c of list) window.__typewave.press(c, o); return window.__typewave.state().brain.sparks; }, [keys, opts]);
+  assert.equal(await sparksAfter(['KeyA', 'KeyS', 'KeyD']), 3);
+  const afterRepeat = await sparksAfter(Array(40).fill('KeyG'), { rep: true });
+  const extra = afterRepeat - 3;
   assert.ok(extra >= 1 && extra <= CONFIG.beads.rep.perSec, `repeat menambah ${extra}`);
-  await page.evaluate(() => { for (let i = 0; i < 400; i++) window.__typewave.press(['KeyQ', 'KeyP', 'Space'][i % 3]); });
-  assert.ok((await state(page)).brain.sparks <= CONFIG.brain.spark.cap);
+  assert.ok((await sparksAfter(Array.from({ length: 400 }, (_, i) => ['KeyQ', 'KeyP', 'Space'][i % 3]))) <= CONFIG.brain.spark.cap);
   assert.deepEqual(errors, []);
   await page.close();
   const off = await openPage(browser, url('&ws=off&brain=0'), { viewport: WIDE, waitHello: false });
@@ -446,12 +448,13 @@ test('otak tidak menabrak HUD (wide dan tall) dan berada di dalam safe zone tall
 });
 
 test('otak tidak berdenyut: ukuran dan terang garis tetap walau detak jantung terbaca', async () => {
-  const R = brainRect(createGeom(WIDE.width, WIDE.height, 'wide'));
+  const R = WIDE_BOX;
   const { page } = await openPage(browser, url('&ws=off'), { viewport: WIDE, waitHello: false });
   await page.evaluate(() => {
     const T = window.__typewave;
-    T.setMind({ pos: 0.5, hr: 120, q: 1 }); // 120 bpm: satu denyut tiap 0,5 detik, jadi 10 sampel mencakup beberapa fase
-    window.__mind = setInterval(() => T.setMind({ pos: 0.5, hr: 120, q: 1 }), 250);
+    T.brainSpin(0); // putaran dihentikan dan kondisi tenang (agitasi kecil): yang diukur hanya pengaruh detak jantung
+    T.setMind({ pos: 0.05, hr: 120, q: 1 }); // 120 bpm: satu denyut tiap 0,5 detik, jadi 10 sampel mencakup beberapa fase
+    window.__mind = setInterval(() => T.setMind({ pos: 0.05, hr: 120, q: 1 }), 250);
   });
   await page.waitForTimeout(1500);
   const samples = [];
@@ -506,7 +509,7 @@ test('level gelombang EEG sampai ke otak: theta, alpha, beta diikuti dengan halu
 });
 
 test('level gelombang tinggi menerangkan lipatan otak dan level rendah meredupkannya', async () => {
-  const R = brainRect(createGeom(WIDE.width, WIDE.height, 'wide'));
+  const R = WIDE_BOX;
   const ink = async (level) => {
     const { page } = await openPage(browser, url('&ws=off'), { viewport: WIDE, waitHello: false });
     await page.evaluate((v) => {
@@ -540,5 +543,104 @@ test('?sim=1: slider theta, alpha, beta mengubah level otak', async () => {
   await page.waitForTimeout(4200);
   const lv = (await state(page)).brain.levels;
   assert.ok(lv[0] > 0.93 && lv[2] < 0.07 && Math.abs(lv[1] - 0.5) < 0.06, `level ${lv}`);
+  await page.close();
+});
+
+test('otak berputar terus dengan kecepatan tetap: tidak bergantung pada ketikan, tanpa sinyal, atau kondisi otak', async () => {
+  // Kecepatan = perubahan sudut dibagi jumlah selang frame yang dipakai halaman (selang dijepit 50 ms seperti di app.js), diukur dengan probe
+  // requestAnimationFrame di dalam halaman; jadi frame yang tersendat tidak membuat tes gagal, hanya kecepatan sebenarnya yang diuji.
+  const speed = (page, ms = 1200) => page.evaluate((span) => new Promise((resolve) => {
+    let first = null; let last = null; let sum = 0; let y0 = 0;
+    const frame = (ts) => {
+      const yaw = window.__typewave.state().brain.yaw;
+      if (first === null) { first = ts; y0 = yaw; } else sum += Math.min((ts - last) / 1000, 0.05);
+      last = ts;
+      if (ts - first >= span) { resolve((((yaw - y0) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) / sum); return; }
+      requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  }), ms);
+  const want = CONFIG.brain.spin;
+  const { page, errors } = await openPage(browser, url('&ws=off'), { viewport: WIDE, waitHello: false });
+  const idle = await speed(page); // belum ada sinyal sama sekali
+  assert.ok(Math.abs(idle - want) < 0.05 * want, `tanpa sinyal ${idle} rad/s, seharusnya ${want}`);
+  await page.evaluate(() => {
+    const T = window.__typewave;
+    T.setMind({ pos: 0.95, hr: 120, q: 1, theta: 1, alpha: 0, beta: 1 });
+    window.__mind = setInterval(() => T.setMind({ pos: 0.95, hr: 120, q: 1, theta: 1, alpha: 0, beta: 1 }), 250);
+    let i = 0; window.__burst = setInterval(() => T.press(['KeyA', 'KeyS', 'KeyD', 'KeyF', 'Space'][i++ % 5]), 60);
+  });
+  await page.waitForTimeout(1500);
+  const busy = await speed(page); // tegang, mengetik cepat, level gelombang ekstrem
+  assert.ok(Math.abs(busy - want) < 0.05 * want, `tegang dan mengetik ${busy} rad/s, seharusnya ${want}`);
+  await page.evaluate(() => { clearInterval(window.__burst); clearInterval(window.__mind); const T = window.__typewave; T.setMind({ pos: 0.05, hr: 55, q: 1 }); window.__mind = setInterval(() => T.setMind({ pos: 0.05, hr: 55, q: 1 }), 250); });
+  await page.waitForTimeout(1500);
+  const calm = await speed(page);
+  assert.ok(Math.abs(calm - want) < 0.05 * want, `tenang ${calm} rad/s, seharusnya ${want}`);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('otak yang berputar benar-benar berubah di layar dan selalu berada di dalam kotaknya (cincin di luar kotak tetap kosong)', async () => {
+  const R = WIDE_BOX;
+  const { page } = await openPage(browser, url('&ws=off'), { viewport: WIDE, waitHello: false });
+  await page.evaluate(() => { const T = window.__typewave; T.setMind({ pos: 0.5, hr: 70, q: 1 }); window.__mind = setInterval(() => T.setMind({ pos: 0.5, hr: 70, q: 1 }), 250); });
+  await page.waitForTimeout(3600);
+  const box = (await state(page)).brain;
+  assert.ok(Math.abs(box.x0 - R.x0) < 0.5 && Math.abs(box.y0 - R.y0) < 0.5 && Math.abs(box.w - R.w) < 0.5 && Math.abs(box.h - R.h) < 0.5, `kotak di halaman ${JSON.stringify(box)} vs tes ${JSON.stringify(R)}`);
+  const ink = (x0, y0, w, h) => page.evaluate(([X, Y, W, H]) => {
+    const c = document.getElementById('scene');
+    const ctx = c.getContext('2d');
+    const ref = ctx.getImageData(Math.round(c.width * 0.5), Math.round(c.height * 0.97), 1, 1).data;
+    const d = ctx.getImageData(Math.round(X), Math.round(Y), Math.round(W), Math.round(H)).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) if (Math.hypot(d[i] - ref[0], d[i + 1] - ref[1], d[i + 2] - ref[2]) > 30) n++;
+    return n;
+  }, [x0, y0, w, h]);
+  const pic = () => page.evaluate(([X, Y, W, H]) => Array.from(document.getElementById('scene').getContext('2d').getImageData(Math.round(X), Math.round(Y), Math.round(W), Math.round(H)).data), [R.x0, R.y0, R.w, R.h]);
+  const a = await pic();
+  let outside = 0;
+  for (let i = 0; i < 12; i++) { // seperempat putaran lebih, dengan percikan tidak ada: yang di luar kotak hanya bisa berasal dari otak
+    outside += await ink(R.x0 - 12, R.y0 - 12, R.w + 24, 12); // atas
+    outside += await ink(R.x0 - 12, R.y0, 12, R.h); // kiri
+    outside += await ink(R.x0 + R.w, R.y0, 12, R.h); // kanan
+    await page.waitForTimeout(350);
+  }
+  const b = await pic();
+  let diff = 0;
+  for (let i = 0; i < a.length; i += 4) diff += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]);
+  assert.ok(diff / (a.length / 4) > 1, `gambar otak hampir tidak berubah dalam ${(12 * 0.35).toFixed(1)} detik: ${(diff / (a.length / 4)).toFixed(2)} per piksel`);
+  assert.equal(outside, 0, `${outside} piksel otak di luar kotaknya`);
+  await page.close();
+});
+
+test('otak tembus pandang: garis sisi belakang ikut tergambar, dan biaya gambarnya kecil', async () => {
+  const { page, errors } = await openPage(browser, url('&ws=off&sim=1'), { viewport: WIDE, waitHello: false });
+  await page.evaluate(() => { window.__typewave.setAuto(true); const T = window.__typewave; T.setMind({ pos: 0.8, hr: 70, q: 1, theta: 0.7, alpha: 0.3, beta: 0.8 }); window.__mind = setInterval(() => T.setMind({ pos: 0.8, hr: 70, q: 1, theta: 0.7, alpha: 0.3, beta: 0.8 }), 250); });
+  await page.waitForTimeout(5000);
+  const s = (await state(page)).brain;
+  assert.ok(s.drawn > 4000, `segmen tergambar ${s.drawn}`);
+  assert.ok(s.drawnBack > 0.25 * s.drawn, `sisi belakang tergambar ${s.drawnBack} dari ${s.drawn}: harus tembus pandang`);
+  const p = await page.evaluate(() => window.__typewave.perf());
+  assert.ok(p.fpsAvg >= 30, `fps ${p.fpsAvg}`); // batas longgar: tes kecepatan sebenarnya ada di perf.test.mjs (opt-in)
+  assert.ok(p.drawP95 <= 8, `waktu gambar satu frame (hanya JS) p95 ${p.drawP95} ms (otak 3D, headless tanpa GPU)`);
+  assert.deepEqual(errors, []);
+  await page.close();
+});
+
+test('ukuran jendela berubah: otak dibangun ulang tanpa melompat, sudut putarnya dilanjutkan', async () => {
+  const { page, errors } = await openPage(browser, url('&ws=off'), { viewport: WIDE, waitHello: false });
+  await page.evaluate(() => { const T = window.__typewave; T.brainSpin(0); T.brainYaw(2.4); });
+  await page.waitForTimeout(200);
+  await page.setViewportSize({ width: 1000, height: 430 });
+  await page.waitForTimeout(400);
+  let b = (await state(page)).brain;
+  assert.ok(Math.abs(b.yaw - 2.4) < 1e-3, `sudut setelah mengubah ukuran: ${b.yaw}`);
+  assert.ok(b.x0 >= 0 && b.x0 + b.w <= 1000 && b.y0 >= 0 && b.y0 + b.h <= 430, 'otak mengikuti ukuran baru');
+  await page.evaluate(() => window.__typewave.brainSpin(1));
+  await page.waitForTimeout(500);
+  b = (await state(page)).brain;
+  assert.ok(b.yaw > 2.4 + 0.05, `putaran berlanjut setelah ukuran berubah: ${b.yaw}`);
+  assert.deepEqual(errors, []);
   await page.close();
 });

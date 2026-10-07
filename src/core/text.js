@@ -1,10 +1,10 @@
 // Teks: label en/id (termasuk status headset) dan format durasi.
 
 export const LABELS = {
-  en: { calm: 'calm', flow: 'flow', tense: 'tense', noSignal: 'no signal', paused: 'paused', wpm: 'wpm', bpm: 'bpm',
+  en: { calm: 'calm', flow: 'neutral', tense: 'tense', noSignal: 'no signal', paused: 'paused', wpm: 'wpm', bpm: 'bpm',
     bridgeOff: 'bridge disconnected', eegOff: 'EEG source offline', connecting: 'connecting to headset', reconnecting: 'reconnecting, attempt {n}',
     warming: 'warming up', checkSensors: 'check the sensors', demoHint: 'Demo without a headset. Type on your keyboard and drag the sliders at the bottom right.' },
-  id: { calm: 'tenang', flow: 'mengalir', tense: 'tegang', noSignal: 'tanpa sinyal', paused: 'jeda', wpm: 'wpm', bpm: 'bpm',
+  id: { calm: 'tenang', flow: 'netral', tense: 'tegang', noSignal: 'tanpa sinyal', paused: 'jeda', wpm: 'wpm', bpm: 'bpm',
     bridgeOff: 'bridge terputus', eegOff: 'sumber EEG terputus', connecting: 'menyambung ke headset', reconnecting: 'menyambung ulang, percobaan {n}',
     warming: 'menyiapkan sinyal', checkSensors: 'cek sensor', demoHint: 'Demo tanpa headset. Ketik di keyboard-mu dan geser slider di kanan bawah.' },
 };

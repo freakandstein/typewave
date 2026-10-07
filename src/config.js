@@ -1,4 +1,14 @@
 // Semua konstanta tuning (spec bagian 3, 4.1, 6). Satuan px mengacu ke sisi pendek 1080 (lihat scaleFor).
+
+// Slot ilustrasi otak (px desain pada skala 1; tinggi kotak, jarak dari atas bingkai, dan jarak ke titik jatuh bead). Otaknya 3D dan
+// berputar, jadi kotaknya memuat otak di sudut putar mana pun (lihat data/brain.js); lebar kotak = tinggi x 1000 / 813.
+const BRAIN_TOP = 33.6;
+const BRAIN_H = 350;
+const SPAWN_GAP = 1.2;
+const KB_TOP = 23.3; // dengan siluet keyboard (?keyboard=1) otak mengecil dan naik sedikit
+const KB_H = 286;
+const KB_GAP = 1.7;
+
 export const CONFIG = Object.freeze({
   colors: Object.freeze({
     calm: Object.freeze({ ground: '#0F2B33', ink: '#8ED8D0' }),
@@ -48,22 +58,28 @@ export const CONFIG = Object.freeze({
   stage: Object.freeze({ wideRatio: 21 / 9, minRatio: 16 / 9, maxRatio: 3, keyboardRatio: 16 / 9 }),
   // Tata letak wide ringkas (bingkai lebih pendek dari 16:9), satuan px desain pada skala 1 = lebar 1920. Di 16:9 hasilnya sama dengan layout.wide.
   compact: Object.freeze({
-    brainTop: 33.6, brainH: 300, brainFullAt: 823, // otak penuh sampai tinggi 823 (21:9), di bawahnya mengecil sebanding dengan tinggi
-    spawnGap: 1.2, centerMax: 626.4, belowRibbon: 200, minFall: 110, // pita selalu 200 px dari dasar, bead jatuh minimal 110 px
+    brainTop: BRAIN_TOP, brainH: BRAIN_H, brainFullAt: 823, // otak penuh sampai tinggi 823 (21:9), di bawahnya mengecil sebanding dengan tinggi
+    spawnGap: SPAWN_GAP, centerMax: 626.4, belowRibbon: 200, minFall: 110, // pita selalu 200 px dari dasar, bead jatuh minimal 110 px
   }),
   layout: Object.freeze({
     // brain: pusat sebagai pecahan lebar dan tinggi kanvas, tinggi dalam px pada skala 1 (dikali g.k)
-    wide: Object.freeze({ center: 0.58, spawn: 0.31, beadRange: [0.10, 0.90], brain: Object.freeze({ cx: 0.5, cy: 0.17, h: 300 }) }),
-    tall: Object.freeze({ center: 0.42, spawn: 0.12, beadRange: [0.24, 0.86], brain: Object.freeze({ cx: 0.64, cy: 0.19, h: 280 }) }),
+    wide: Object.freeze({ center: 0.58, spawn: (BRAIN_TOP + BRAIN_H + SPAWN_GAP) / 1080, beadRange: [0.10, 0.90], brain: Object.freeze({ cx: 0.5, cy: (BRAIN_TOP + BRAIN_H / 2) / 1080, h: BRAIN_H }) }),
+    tall: Object.freeze({ center: 0.42, spawn: 0.12, beadRange: [0.24, 0.86], brain: Object.freeze({ cx: 0.64, cy: 0.19, h: 327 }) }),
   }),
   // Menimpa layout bila siluet keyboard dinyalakan (?keyboard=1): ruang bawah dipakai footprint, jadi pita kembali ke tengah
   // dan otak mengecil sedikit supaya tetap di atas titik jatuh bead.
   layoutKeyboard: Object.freeze({
-    wide: Object.freeze({ center: 0.5, spawn: 0.25, brain: Object.freeze({ cx: 0.5, cy: 0.135, h: 245 }) }),
+    wide: Object.freeze({ center: 0.5, spawn: (KB_TOP + KB_H + KB_GAP) / 1080, brain: Object.freeze({ cx: 0.5, cy: (KB_TOP + KB_H / 2) / 1080, h: KB_H }) }),
   }),
-  // Ilustrasi otak (spec 6.4). Tanpa glow: hanya alpha dan lebar garis (px pada skala 1).
+  // Ilustrasi otak 3D (spec 6.4). Tanpa glow: hanya alpha dan lebar garis (px pada skala 1). Satuan jarak: satuan desain (kotak 1000 lebar).
   brain: Object.freeze({
-    alpha: Object.freeze({ outline: 0.75, lit: 0.3, base: [0.8, 1], noSignal: 0.35 }),
+    alpha: Object.freeze({ fixed: 0.75, lit: 0.3, base: [0.8, 1], noSignal: 0.35 }), // fixed = terang celah utama dan batang otak (tidak ikut kelompok gelombang)
+    // Putaran mengelilingi sumbu tegak: kecepatan tetap (rad/detik, sekitar 20 detik per putaran), tidak mengikuti ketikan atau EEG; yaw0 = sudut awal.
+    spin: 0.32, yaw0: 0.55,
+    // Tembus pandang: semua garis tergambar, yang makin jauh makin redup dan tipis, yang menghadap menjauh dari kamera (back) lebih redup lagi.
+    // far = terang relatif garis terjauh, curve = kelengkungan, gain = penguat terang dasar, range = setengah rentang kedalaman (satuan model).
+    depth: Object.freeze({ far: 0.12, curve: 1.5, back: 0.4, gain: 1.3, range: 1.25 }),
+    width: Object.freeze([0.9, 1.2, 1.6, 1.7]), // lebar garis: sisi belakang, depan jauh, depan dekat (dan lipatan yang menyala), celah utama
     // Tiga kelompok lipatan menurut panjang (terpanjang = theta lambat, sedang = alpha, terpendek = beta cepat). Level 0..1 dari EEG
     // mengatur terang dasar tiap kelompok, kelompok percikan ketikan, serta kecepatan dan panjang ekornya.
     bands: Object.freeze({
@@ -71,7 +87,7 @@ export const CONFIG = Object.freeze({
       tauMs: 1200, floor: 0.15,
       speed: [0.55, 1, 1.6], trail: [1.3, 1, 0.7],
     }),
-    line: Object.freeze({ outline: 1.7, fold: 1.2, lit: 1.0, spark: 2.6, head: 4.2 }),
+    line: Object.freeze({ spark: 2.6, head: 4.2 }),
     motion: Object.freeze({ amp: [1.5, 6], speed: [0.35, 2.4], roughFrom: 0.5, rough: 0.6 }), // amp: satuan desain
     energyMs: 700,
     spark: Object.freeze({

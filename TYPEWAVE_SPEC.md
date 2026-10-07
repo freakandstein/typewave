@@ -1,7 +1,7 @@
 # TypeWave: visualisasi reaktif ketikan + EEG
 
 Design spec untuk development. Proyek mandiri: tidak bergantung pada project EEG yang sudah ada; headset Muse dibaca langsung oleh paket `eeg/` di proyek ini.
-Status: draft v0.3, 3 Oktober 2026, direvisi 4 Oktober 2026: siluet keyboard tidak tampil secara default (bagian 4, 6.2, 8.2), ditambah ilustrasi otak dengan tiga kelompok garis untuk level gelombang EEG (bagian 2, 4, 5, 6.4, 8.2, 11), dan sumber EEG dibuat mandiri di dalam proyek dengan sambung ulang otomatis, tanpa server EEG lain (bagian 1, 5, 8, 11, 12, 13, 14); v0.2 tersimpan di `TYPEWAVE_SPEC.v0.2.md`. Nama proyek: TypeWave (typing + brainwave). Di dalam spec ini, elemen visual utamanya tetap disebut "pita" (ribbon).
+Status: draft v0.3, 3 Oktober 2026, direvisi 4 Oktober 2026: siluet keyboard tidak tampil secara default (bagian 4, 6.2, 8.2), ditambah ilustrasi otak dengan tiga kelompok garis untuk level gelombang EEG (bagian 2, 4, 5, 6.4, 8.2, 11), dan sumber EEG dibuat mandiri di dalam proyek dengan sambung ulang otomatis, tanpa server EEG lain (bagian 1, 5, 8, 11, 12, 13, 14); direvisi 7 Oktober 2026: ilustrasi otak menjadi 3D tembus pandang yang selalu berputar perlahan (bagian 2, 4, 4.1, 6.1, 6.4, 8.1, 12, 13, 14); v0.2 tersimpan di `TYPEWAVE_SPEC.v0.2.md`. Nama proyek: TypeWave (typing + brainwave). Di dalam spec ini, elemen visual utamanya tetap disebut "pita" (ribbon).
 Dibangun dan diserahkan sebagai satu kesatuan, tanpa fase. Semua bagian di bawah harus ada, dan "selesai" berarti seluruh Definition of Done (bagian 12) terpenuhi.
 
 ---
@@ -37,7 +37,7 @@ Satu pita cahaya mengalir melintasi layar.
 - **Ketebalan, tinggi gelombang, dan kecepatan pita** mengikuti gaya mengetik (WPM, kerapatan ketikan).
 - **Bentuk gelombang dan tekstur tepi pita** mengikuti otak: saat calm gelombangnya panjang dan mulus, makin rapat dan patah saat tense; tepinya halus seperti sutra saat calm dan flow, makin bergerigi saat tense.
 - **Seluruh frame ikut berganti suhu warna** (color grade) mengikuti `spectrum_pos`.
-- **Ilustrasi otak** di atas tengah (bagian 6.4): garis tipis otak yang ikut warna frame, lipatannya makin gelisah saat tense, dan tiap ketikan menjalarkan satu percikan di sepanjang lipatan. Tiga jenis garis (panjang, sedang, pendek) mewakili gelombang lambat (theta), alpha, dan cepat (beta): terangnya mengikuti level tiap gelombang dari EEG. Ini hiasan, bukan peta aktivitas otak.
+- **Ilustrasi otak** di atas tengah (bagian 6.4): otak 3D dari garis tipis yang selalu berputar perlahan dan digambar tembus pandang (garis di belakang tetap tampak, lebih redup), ikut warna frame, lipatannya makin gelisah saat tense, dan tiap ketikan menjalarkan satu percikan di sepanjang lipatan. Tiga jenis garis (panjang, sedang, pendek) mewakili gelombang lambat (theta), alpha, dan cepat (beta): terangnya mengikuti level tiap gelombang dari EEG. Ini hiasan, bukan peta aktivitas otak.
 
 Elemen yang harus paling diingat penonton adalah color grade seluruh frame + pita; ilustrasi otak menjadi pendukung kedua dengan garis tipis dan alpha rendah. Semua elemen lain sengaja tenang supaya tidak bersaing dengan suara keyboard. Tidak ada riak neon per tombol, tidak ada bloom global, tidak ada partikel dekoratif (percikan otak bukan dekorasi: tepat satu per ketikan).
 
@@ -66,7 +66,7 @@ p >= 0.65        : mix(flow, tense, smoothstep(0.65, 0.85, p))
 
 Kualitas sinyal `q` (0..1) menskalakan saturasi ink: `sat = lerp(0.5, 1.0, q)`.
 
-Kata state (`calm` / `flow` / `tense`) memakai ambang yang sama dengan project EEG asal pemrosesan sinyalnya (bagian 11): `calm` bila `p < 0.35`, `flow` bila `0.35 <= p <= 0.65`, `tense` bila `p > 0.65`. Kandidat baru harus bertahan 500 ms sebelum kata berganti (hysteresis), supaya label tidak berkedip di sekitar ambang.
+Kata state yang tampil (`calm` / `neutral` / `tense`; nama internal state tengah tetap `flow`: kunci warna, kode, dan log) memakai ambang yang sama dengan project EEG asal pemrosesan sinyalnya (bagian 11): `calm` bila `p < 0.35`, `flow` bila `0.35 <= p <= 0.65`, `tense` bila `p > 0.65`. Kandidat baru harus bertahan 500 ms sebelum kata berganti (hysteresis), supaya label tidak berkedip di sekitar ambang.
 
 Pada `?transparent=1` ground dihilangkan, sehingga color grade tidak tampil; ink tetap berubah.
 
@@ -74,7 +74,7 @@ Pada `?transparent=1` ground dihilangkan, sehingga color grade tidak tampil; ink
 
 Satu family: **Anybody** (variable font, lisensi OFL, sumbu `wdth` 50 sampai 150, `wght` 100 sampai 900). File woff2 di-bundle lokal di `assets/fonts/` (beserta `OFL.txt`) supaya aman di OBS tanpa internet.
 
-Sumbu huruf HUD **tetap**, tidak mengikuti state: lebar dan tebal teks sama saat tenang, mengalir, maupun tegang, jadi teks tidak tampak membesar dan mengecil dan tetap terbaca sebagai Browser Source di OBS (permintaan user, 6 Oktober 2026). Nilainya satu tempat, `CONFIG.type`:
+Sumbu huruf HUD **tetap**, tidak mengikuti state: lebar dan tebal teks sama saat tenang, netral, maupun tegang, jadi teks tidak tampak membesar dan mengecil dan tetap terbaca sebagai Browser Source di OBS (permintaan user, 6 Oktober 2026). Nilainya satu tempat, `CONFIG.type`:
 
 ```
 wdth = 100    // hudWdth: lebar normal
@@ -85,7 +85,7 @@ Rancangan awal memorfkan `wdth` 130 ke 70 dan `wght` 300 ke 700 mengikuti `pos` 
 
 Aturan teks:
 
-- Semua huruf kecil / sentence case: `calm`, `flow`, `tense`, `74 wpm`.
+- Semua huruf kecil / sentence case: `calm`, `neutral`, `tense`, `74 wpm`.
 - Tanpa label kecil di atas konten, tanpa huruf kapital semua, tanpa ornamen.
 - Ukuran referensi di canvas 1080 tinggi: state word 96 px, angka WPM 64 px, teks kecil (HR) 28 px. Skala proporsional dengan lebar (wide: lebar / 1920) atau sisi pendek (tall).
 
@@ -115,7 +115,7 @@ wide 21:9 (default, canvas OBS 1920x823)          tall 9:16 (TikTok)
 
 - Rata kiri untuk teks. Pita memenuhi lebar (wide) atau tinggi (tall).
 - **Safe zone tall:** sisakan kira-kira 20% bawah, 15% kanan, dan 10% atas bebas dari elemen penting (tertutup UI TikTok). Angka ini perkiraan; verifikasi ulang dengan screenshot dari TikTok LIVE Studio sebelum rilis.
-- **Wide:** HUD di pojok atas dan ilustrasi otak (6.4) di atas tengah. Bingkai bawaan 21:9 (tinggi 24% lebih pendek daripada 16:9). Tata letak ringkas (`CONFIG.compact`): skala dari lebar jadi elemen tetap seukuran, bead jatuh dari tepat di bawah otak, dan pita selalu 200 px dari dasar bingkai (cukup untuk simpangan terbesarnya), sehingga tidak ada ruang kosong yang terbuang; otak mengecil sebanding bila bingkai lebih pendek dari 21:9. Pada 16:9 (`?ratio=16:9`) hasilnya sama dengan tata letak lama (pita di 58% tinggi, bead dari 31%). Siluet keyboard (footprint, 6.2) tidak tampil secara default; `?keyboard=1` menyalakannya, mengembalikan bingkai ke 16:9 dan pita ke tengah (50%), dan mengecilkan otak sedikit.
+- **Wide:** HUD di pojok atas dan ilustrasi otak (6.4) di atas tengah. Bingkai bawaan 21:9 (tinggi 24% lebih pendek daripada 16:9). Tata letak ringkas (`CONFIG.compact`): skala dari lebar jadi elemen tetap seukuran, bead jatuh dari tepat di bawah otak, dan pita selalu 200 px dari dasar bingkai (cukup untuk simpangan terbesarnya), sehingga tidak ada ruang kosong yang terbuang; otak mengecil sebanding bila bingkai lebih pendek dari 21:9. Pada 16:9 (`?ratio=16:9`) hasilnya sama dengan tata letak tanpa ringkas (`CONFIG.layout.wide`: pita di 58% tinggi, bead dari tepat di bawah otak, 35,6%). Siluet keyboard (footprint, 6.2) tidak tampil secara default; `?keyboard=1` menyalakannya, mengembalikan bingkai ke 16:9 dan pita ke tengah (50%), dan mengecilkan otak sedikit.
 - **Tall:** HUD rata kiri, mulai di bawah zona atas 10% (state word, `NN wpm`, lalu HR berukuran kecil di bawahnya); kolom kanan 15% tetap kosong. Ilustrasi otak di kanan kolom HUD, di dalam safe zone. Gambar di atas skematis.
 - `?transparent=1` menghilangkan ground sehingga bisa ditumpuk di atas feed kamera.
 
@@ -129,8 +129,8 @@ Tall adalah scene wide yang diputar: sumbu sepanjang pita jadi vertikal, sumbu s
 | Garis tengah pita | y = 200 px dari dasar bingkai, paling bawah 58% tinggi di 16:9 (623 px di 21:9); 50% tinggi dengan `?keyboard=1` | x = 42% lebar |
 | Arah aliran | kiri ke kanan (`RIBBON_DIR`) | bawah ke atas |
 | Posisi bead sepanjang pita | x = posisi tombol, 10%..90% lebar | y = posisi tombol, dipetakan ke 24%..86% tinggi diukur dari bawah (di luar zona tidak aman) |
-| Spawn bead | y = tepat di bawah otak (334,8 px pada skala 1, sama dengan 31% tinggi di 16:9); 25% tinggi dengan `?keyboard=1` | x = 12% lebar |
-| Ilustrasi otak | pusat x = 50%, tepi atas 33,6 px; tinggi 300 px pada skala 1, mengecil sebanding bila tinggi bingkai di bawah 823 px (pusat y = 13,5% dan tinggi 245 px dengan `?keyboard=1`) | pusat x = 64% lebar, y = 19% tinggi; tinggi 280 px; di dalam safe zone dan di kanan kolom HUD |
+| Spawn bead | y = tepat di bawah otak (384,8 px pada skala 1, sama dengan 35,6% tinggi di 16:9); 311 px (28,8% tinggi) dengan `?keyboard=1` | x = 12% lebar |
+| Ilustrasi otak | kotak otak (6.4): pusat x = 50%, tepi atas 33,6 px; tinggi 350 px pada skala 1 (lebar 430,5 px), mengecil sebanding bila tinggi bingkai di bawah 823 px (tepi atas 23,3 px dan tinggi 286 px dengan `?keyboard=1`) | pusat x = 64% lebar, y = 19% tinggi; tinggi 327 px; di dalam safe zone dan di kanan kolom HUD |
 | Footprint (hanya dengan `?keyboard=1`) | lebar 80% (10%..90%), di sepertiga bawah | lebar 76% (6%..82%), tinggi ±17%, tepi bawah di 22% dari bawah (tepat di atas zona tidak aman) |
 
 ---
@@ -232,7 +232,7 @@ Pita dirender dari ring buffer: satu sampel `(y, thickness, roughness, color)` p
 ### 6.1 Bead
 
 - Posisi sepanjang pita (x pada wide, y pada tall) ditentukan posisi tombol pada layout ANSI 75% (`data/layout-ansi75.js`: posisi tengah tombol dalam unit tombol, dinormalisasi ke 10%..90% lebar; untuk tall lihat 4.1). Pada `privacy=zone`, posisi diacak seragam di dalam rentang tangan: tangan kiri 10%..48%, tangan kanan 52%..90%, Space 40%..60%. Kolom persis tidak pernah tampil pada mode ini.
-- Spawn tepat di bawah otak (y = 334,8 px pada skala 1; 25% tinggi dengan `?keyboard=1`), jatuh ke y pita pada x itu dengan ease-in 280 ms.
+- Spawn tepat di bawah otak (y = 384,8 px pada skala 1; 311 px dengan `?keyboard=1`), jatuh ke y pita pada x itu dengan ease-in 280 ms.
 - Mendarat: ring kecil (radius 0 ke 18 px, alpha 0.5 ke 0, 500 ms). Ini satu-satunya tempat glow dipakai.
 - Setelah itu ikut terbawa scroll pita dan memudar maksimum 8 detik atau saat keluar frame.
 - Radius: `3 + 7 × clamp((IKI - 120) / 800, 0, 1)` px. Tombol pertama setelah diam jadi besar, saat burst jadi kecil dan rapat.
@@ -250,36 +250,40 @@ Opsional: tidak digambar secara default, hanya dengan `?keyboard=1` (8.2). Tanpa
 
 HUD adalah elemen DOM di atas canvas (lihat 3.2).
 
-- Kiri atas: state word (`calm` / `flow` / `tense`), di bawahnya `NN wpm`. WPM hanya tampil saat mengetik: fade in 400 ms, fade out 1.5 s setelah idle.
+- Kiri atas: state word (`calm` / `neutral` / `tense`), di bawahnya `NN wpm`. WPM hanya tampil saat mengetik: fade in 400 ms, fade out 1.5 s setelah idle.
 - Kanan atas (wide) atau di bawah `NN wpm` (tall): satu baris pendek berisi titik sensor, ikon hati, lalu HR (`68 bpm`; ikon dan angka disembunyikan bila `hr` tidak ada). Ikon hati adalah SVG statis berwarna ember `#FF5E72` (tanpa animasi: tidak berdenyut mengikuti detak jantung) supaya jelas bahwa angkanya detak jantung, bukan tempo. Tidak ada timer sesi di HUD: user menilainya tidak perlu, dan angkanya yang berganti tiap detik terasa bergoyang (7 Oktober 2026); durasi sesi tetap ada di kartu laporan. Semua angka HUD (wpm dan HR) memakai angka berlebar tetap (`font-variant-numeric: tabular-nums`; Anybody punya fitur `tnum`), karena angka proporsional (1 dan 7 lebih sempit, selisih hingga sekitar 1,7 px per digit pada 28 px) membuat teks terlihat membesar dan mengecil tiap angkanya berganti.
 - Teks status kecil di bawah baris HR, lebarnya dibatasi sekitar 320 px pada skala 1 (teks panjang seperti `menyambung ulang, percobaan 2` dibungkus jadi dua baris, rata kanan di wide dan rata kiri di tall), digabung dengan `paused` saat jeda. Isinya dari status headset (`core/headset.js`; teksnya `headsetText` di `core/text.js`), dengan urutan: `bridge disconnected` (halaman kehilangan WebSocket ke bridge); `EEG source offline` (sumber EEG pernah terlihat tetapi tidak ada pesan `headset` selama 3 detik, atau berhenti); `connecting to headset`; `reconnecting, attempt N`. Keempatnya tampil segera, walau `mind` terakhir belum basi. Saat `connected`: `check the sensors` bila tidak ada satu pun sensor `good` (DSP butuh minimal satu kanal >= 0,65 untuk menghasilkan `mind`; tampil seketika, tanpa menunggu `mind` lama basi); `warming up` bila belum ada kontak segar (baru tersambung atau tersambung ulang, jadi tidak ada jeda kosong sesudah "menyambung ulang") atau belum ada `mind` (jendela sinyal dan warm-up); selain itu tidak ada teks. Tanpa kabar apa pun dari sumber EEG (mis. tanpa headset): `no signal` saat noSignal, seperti sebelumnya. Dengan `?debug=1` ditambah fps, jumlah key diterima, kode terakhir, dan status listener (`ok`, `no-permission`, `secure-input`).
 - Titik sensor: glyph kepala dilihat dari atas (dahi di atas, hidung kecil sebagai penanda) dengan empat titik: dua di dahi (AF7, AF8) dan dua di belakang telinga (TP9, TP10). Tingginya 88 px pada skala 1 (sekitar tiga kali tinggi teks HR; ukuran 44 px dan 72 px dinilai terlalu kecil di OBS, permintaan user 7 Oktober 2026), dan semua bagiannya (lingkar, hidung, titik) berskala dari satu nilai, `--s` di `index.html`. Letaknya di baris HR: di kiri ikon hati (wide, baris rata kanan) atau di ujung baris (tall, baris rata kiri); tempatnya selalu disisakan (opacity, bukan `display`), jadi HR tidak bergeser saat titik muncul. Tampil (fade 600 ms) hanya selama `connected` dan pesannya segar, dan hilang saat putus. Level tiap sensor dari kualitas kanal dengan ambang yang sama seperti DSP: >= 0,65 `good` (titik hijau `#7ADFA0`; kanal dipakai untuk level otak), >= 0,25 `fair` (titik kuning `#F2B24E`; kurang bagus, belum dipakai), di bawahnya `poor` (cincin merah `#FF5E72`; buruk, tidak dipakai). Bentuk (titik atau cincin) ikut membedakan, bukan hanya warna. Warna berubah halus (500 ms) dan tidak berdenyut atau bergerak. `?contact=0` menyembunyikan titik (teks status tetap).
-- Label state dalam bahasa Inggris huruf kecil; `?lang=id` menggantinya menjadi `tenang`, `mengalir`, `tegang`, `tanpa sinyal`, `jeda`, dan teks status headset (`bridge terputus`, `sumber EEG terputus`, `menyambung ke headset`, `menyambung ulang, percobaan N`, `menyiapkan sinyal`, `cek sensor`).
+- Label state dalam bahasa Inggris huruf kecil; `?lang=id` menggantinya menjadi `tenang`, `netral`, `tegang`, `tanpa sinyal`, `jeda`, dan teks status headset (`bridge terputus`, `sumber EEG terputus`, `menyambung ke headset`, `menyambung ulang, percobaan N`, `menyiapkan sinyal`, `cek sensor`).
 
 ### 6.4 Ilustrasi otak
 
-Garis tipis otak tampak samping (kontur cerebrum, cerebellum, batang otak, dua celah utama, dan lipatan korteks) di atas tengah layar. Digambar di Canvas dengan warna ink grade, hanya dengan alpha dan lebar garis (tanpa glow: ring pendaratan bead tetap satu-satunya glow, 6.1). Ini ilustrasi, bukan peta aktivitas otak: sumber EEG hanya mengirim angka gabungan, bukan data per area, jadi titik yang menyala saat mengetik tidak menunjukkan area otak yang sebenarnya.
+Otak 3D dari garis tipis (cerebrum dua belahan dengan lipatan korteks dan dua celah utama di tiap belahan, cerebellum, dan batang otak) di atas tengah layar. Otaknya selalu berputar perlahan mengelilingi sumbu tegak dengan kecepatan tetap (`CONFIG.brain.spin`, 0,32 rad/detik, sekitar 20 detik per putaran; kamera sedikit di atas otak, `PITCH` 0,10 rad) dan digambar di Canvas 2D dengan warna ink grade, hanya dengan alpha dan lebar garis (tanpa glow: ring pendaratan bead tetap satu-satunya glow, 6.1). Ini ilustrasi, bukan peta aktivitas otak: sumber EEG hanya mengirim angka gabungan, bukan data per area, jadi titik yang menyala saat mengetik tidak menunjukkan area otak yang sebenarnya.
 
-Bentuknya dibuat saat pengembangan oleh `tools/gen_brain.mjs` (siluet berupa spline, lipatan dari pola reaksi-difusi Gray-Scott yang dibatasi siluet, seed tetap) dan disimpan sebagai data vektor di `data/brain.js` (sekitar 1000 titik). Saat berjalan halaman hanya menggambar garis, tanpa alokasi per frame.
+**Tembus pandang.** Semua garis digambar, termasuk yang ada di belakang; tidak ada penyembunyian garis yang tertutup. Makin jauh dari kamera, garis makin redup dan tipis (kurva terang relatif dari 1 pada kedalaman terdekat sampai 0,12 pada yang terjauh; kedalaman otak sendiri memakai sekitar 0,14 sampai 0,92 dari kurva itu), dan garis yang menghadap menjauh dari kamera (sisi belakang) lebih redup lagi (0,4×) dan paling tipis (`CONFIG.brain.depth` dan `CONFIG.brain.width`). Peralihan dari belakang ke depan di tepi otak halus (terang berubah bertahap selama garis berputar melewati tepi), jadi tidak ada garis yang tiba-tiba berganti terang. Perbedaan kedalaman inilah yang membuat otak terbaca sebagai benda bervolume.
 
-**Tiga kelompok garis.** Lipatan korteks dibagi tiga menurut panjangnya, dan tiap kelompok membawa sekitar sepertiga dari panjang total garis: yang terpanjang mewakili gelombang lambat (theta), yang sedang alpha, dan yang terpendek gelombang cepat (beta). Secara umum gelombang lambat dikaitkan dengan koordinasi area yang luas dan gelombang cepat dengan kerja yang lokal, jadi garis panjang untuk yang lambat dan garis pendek untuk yang cepat dipakai sebagai metafora, bukan pemetaan anatomi: letak garis tidak mewakili area otak. Garis otak kecil (cerebellum, bertanda `cb` di data) tidak ikut kelompok dan terangnya tetap.
+**Putaran.** Kecepatan putar selalu sama: tidak mengikuti ketikan, `pos`, detak jantung, level gelombang, maupun ada tidaknya sinyal (otak tanpa sinyal tetap berputar, hanya lebih redup dan lipatannya diam). Putaran bukan denyut: ukuran dan terang garis tidak berubah mengikuti data, dan ukuran otak di layar hanya berubah karena sudut pandang (dari samping lebih panjang, dari depan lebih sempit), di dalam kotak yang memuat otak di sudut putar mana pun. Saat jendela berubah ukuran, sudut putar dilanjutkan.
 
-Level tiap gelombang (0..1, dari `mind.theta`, `mind.alpha`, `mind.beta`) dihaluskan dengan konstanta waktu 1,2 detik supaya tidak berkedip, lalu mengatur terang dasar kelompoknya (opasitas garis 0,10 pada level 0 sampai 0,74 pada level 1; 0,42 pada level 0,5, sama dengan tanpa data) dan kelompok mana yang dinyalakan percikan ketikan. Tanpa data (field tidak ada, atau noSignal) ketiga level jatuh ke 0,5. Sumber EEG menormalisasi tiap gelombang terhadap riwayat user sendiri (persentil 10..90 dari sekitar 18 detik terakhir), jadi terang berarti "sedang tinggi dibanding barusan", bukan kekuatan absolut.
+Bentuknya dibuat saat pengembangan oleh `tools/gen_brain.mjs` (lipatan dari pola labirin reaksi-difusi Gray-Scott pada permukaan bola yang dibentuk menjadi dua belahan; garis batas pola diambil dengan marching triangles lalu disederhanakan; seed tetap; sekitar 30 detik) dan disimpan di `data/brain.js` sebagai posisi dan normal permukaan terkuantisasi (sekitar 8.100 titik, 6.250 segmen lipatan; lipatan yang lebih panjang dari sekitar 400 satuan dipecah generator menjadi beberapa garis sama panjang, tanpa mengubah bentuknya), dibuka sekali oleh `data/brain-decode.js`. Proyeksinya (putar, miring, perspektif lemah) ada di `core/orbit.js` dan dipakai bersama oleh penggambar dan generator; generator menghitung kotak desain (1000 × 813 satuan) yang memuat otak di setiap sudut putar, dan itulah kotak yang ditempatkan oleh tata letak (bagian 4). Saat berjalan halaman hanya menggambar garis, tanpa alokasi per frame: tiap segmen dikelompokkan menurut tingkat alpha (24 tingkat berskala akar, halus di bagian redup, sehingga semua segmen tetap tergambar walau otak diredupkan tanpa sinyal) dan kelas lebar lalu digambar sebagai sedikit jalur (20 sampai 50 goresan per frame, paling banyak 100), dengan segmen berurutan disambung tanpa `moveTo`. Kerja JS per frame sekitar 0,5 ms; dengan raster perangkat lunak dipaksa selesai (Chromium tanpa GPU, lebar 1920) sekitar 4 ms, dan dengan GPU jauh lebih kecil; 60 fps stabil. `perf().drawP95` di halaman hanya menghitung kerja JS. Belum diukur di OBS.
+
+**Tiga kelompok garis.** Lipatan korteks dibagi tiga menurut panjang garis labirin utuhnya (sebelum dipecah; semua bagian satu garis utuh selalu sekelompok), dan tiap kelompok membawa sekitar sepertiga dari panjang total garis: yang terpanjang mewakili gelombang lambat (theta; hanya beberapa garis utuh yang sangat panjang), yang sedang alpha, dan yang terpendek gelombang cepat (beta). Karena garis utuh dipecah, tiap kelompok terdiri dari banyak garis pendek: satu percikan ketikan menyalakan paling banyak sekitar 2% dari panjang total lipatan, bukan seluruh kelompok. Secara umum gelombang lambat dikaitkan dengan koordinasi area yang luas dan gelombang cepat dengan kerja yang lokal, jadi garis panjang untuk yang lambat dan garis pendek untuk yang cepat dipakai sebagai metafora, bukan pemetaan anatomi: letak garis tidak mewakili area otak. Garis otak kecil (cerebellum, jenis 2 di data) tidak ikut kelompok dan terangnya tetap; celah utama dan batang otak juga tidak ikut (terang tetap `CONFIG.brain.alpha.fixed`, tebal sedikit lebih besar untuk celah).
+
+Level tiap gelombang (0..1, dari `mind.theta`, `mind.alpha`, `mind.beta`) dihaluskan dengan konstanta waktu 1,2 detik supaya tidak berkedip, lalu mengatur terang dasar kelompoknya (opasitas dasar 0,10 pada level 0 sampai 0,74 pada level 1; 0,42 pada level 0,5, sama dengan tanpa data; lalu dikali penguat 1,3 dan faktor kedalaman) dan kelompok mana yang dinyalakan percikan ketikan. Tanpa data (field tidak ada, atau noSignal) ketiga level jatuh ke 0,5. Sumber EEG menormalisasi tiap gelombang terhadap riwayat user sendiri (persentil 10..90 dari sekitar 18 detik terakhir), jadi terang berarti "sedang tinggi dibanding barusan", bukan kekuatan absolut.
 
 | Sumber | Reaksi |
 |---|---|
-| `spectrum_pos` | Agitasi lipatan lewat kisi pergeseran halus. Tenang: amplitudo kecil (±1,5 satuan desain) dan lambat (0,35 rad/detik). Tegang: ±6 dan cepat (2,4 rad/detik), ditambah komponen kasar mulai pos 0,5. Warna mengikuti grade seperti pita |
+| `spectrum_pos` | Agitasi lipatan dan otak kecil lewat kisi pergeseran halus 3D (diinterpolasi trilinear ke tiap titik; celah utama dan batang otak diam). Tenang: amplitudo kecil (±1,5 satuan desain) dan lambat (0,35 rad/detik). Tegang: ±6 dan cepat (2,4 rad/detik), ditambah komponen kasar mulai pos 0,5. Warna mengikuti grade seperti pita |
 | `hr` | Tidak memengaruhi otak: ukuran dan terang garis tetap, tanpa denyut (disengaja: denyut membuat otak terlihat zoom in dan zoom out). Detak jantung hanya menggerakkan latar "bernapas" |
 | `density` | Terang dasar: opasitas 0,8× sampai 1× |
 | `theta`, `alpha`, `beta` | Terang dasar tiga kelompok lipatan (panjang, sedang, pendek) dan kelompok yang dinyalakan percikan ketikan; lihat di atas |
-| ketikan | Satu percikan per key-down: kepala titik dengan ekor bergerak di sepanjang satu lipatan sekitar 0,9 detik, dan lipatan sekelompok di dekatnya menyala lalu memudar dalam 700 ms. Posisi horizontal mengikuti kolom tombol (sama dengan bead, jadi `privacy=zone` mengacak di dalam rentang tangan); posisi vertikal acak. Kelompok garis dipilih menurut level theta, alpha, beta (bobot = 0,15 + level), dan kecepatan serta panjang ekor mengikuti kelompok: theta 0,55× dan 1,3×, alpha 1× dan 1×, beta 1,6× dan 0,7× |
+| ketikan | Satu percikan per key-down: kepala titik dengan ekor bergerak di sepanjang satu lipatan (di ruang 3D, jadi ikut berputar dan bisa berpindah ke sisi belakang yang lebih redup) sekitar 0,9 detik, dan lipatan sekelompok di dekatnya menyala (lebih terang dan lebih tebal) lalu memudar dalam 700 ms. Posisi horizontal di layar mengikuti kolom tombol (sama dengan bead, jadi `privacy=zone` mengacak di dalam rentang tangan); posisi vertikal acak; titik awalnya lipatan terdekat dari posisi itu pada gambar saat ini, di sisi yang menghadap kamera. Kelompok garis dipilih menurut level theta, alpha, beta (bobot = 0,15 + level), dan kecepatan serta panjang ekor mengikuti kelompok: theta 0,55× dan 1,3×, alpha 1× dan 1×, beta 1,6× dan 0,7× |
 | Backspace, Space, tombol lain | Backspace bergerak mundur dan lebih redup; Space lebih panjang dan lebih lambat; modifier, panah, dan F-key pendek dan redup |
 | Enter | Semua lipatan menyala sebentar (tidak diulang saat Enter ditahan) |
 | auto-repeat | Dibatasi 12 percikan per detik, batas yang sama dengan bead |
-| noSignal | Redup (opasitas 35%) dan diam, tanpa agitasi; percikan ketikan tetap jalan |
+| noSignal | Redup (opasitas 35%) dan lipatan diam, tanpa agitasi; putaran dan percikan ketikan tetap jalan |
 | pause | Tidak ada ketikan yang diteruskan, jadi tidak ada percikan |
 
-Batas 48 percikan aktif (yang tertua didaur ulang). Kontur luar tidak bergerak; lipatan makin diam makin dekat ke kontur dan celah supaya bentuk otak tetap utuh. `?brain=0` mematikan seluruh ilustrasi. Dengan `?keyboard=1` otak mengecil sedikit supaya tetap di atas titik jatuh bead.
+Batas 48 percikan aktif (yang tertua didaur ulang). Celah utama dan batang otak tidak bergerak oleh agitasi, jadi bentuk otak tetap utuh. `?brain=0` mematikan seluruh ilustrasi. Dengan `?keyboard=1` otak mengecil sedikit supaya tetap di atas titik jatuh bead.
 
 ---
 
@@ -288,10 +292,10 @@ Batas 48 percikan aktif (yang tertua didaur ulang). Kontur luar tidak bergerak; 
 Dipicu tombol `R` di halaman (hanya bila halaman sedang fokus), `{"t":"ctl","report":true}`, atau hotkey global `ctrl+alt+r` di bridge (di Mac: Control + Option + R). Hotkey global adalah satu-satunya cara saat halaman berada di OBS, karena Browser Source tidak menerima keyboard. Tampil 9 detik lalu menutup sendiri; `Esc` atau pemicu kedua menutup lebih awal. Saat tampil, scene di belakangnya diredupkan 60% dan HUD disembunyikan supaya teksnya tidak menumpuk dengan kartu.
 
 - **Strip sesi:** satu strip horizontal berwarna (warna = state per detik) dengan garis WPM di atasnya.
-- **Angka:** durasi, WPM rata-rata (hanya saat mengetik) dan puncak, menit di flow (waktu `pos` di 0.35..0.65), jeda terpanjang, jumlah backspace.
+- **Angka:** durasi, WPM rata-rata (hanya saat mengetik) dan puncak, waktu di state neutral (`pos` di 0.35..0.65), jeda terpanjang, jumlah backspace.
 - Data: log `{t, pos, wpm, hr}` per 1 detik, dicatat berdasarkan timestamp (bukan hitungan tick) dan celah diisi nilai terakhir bila timer tertahan, ditambah penghitung berjalan (jumlah backspace, jeda terpanjang, puncak WPM, detik mengetik, detik di flow). 4 jam = 14.400 sampel, ringan di memori.
 - Ekspor PNG 1920×1080 dan 1080×1920 (`canvas.toBlob`) dengan tombol di panel kanan bawah (selalu terlihat), tampil hanya bila `?controls=1` (dipakai pada tab di monitor kecil, bukan di OBS). Tab itu harus dibuka sebelum sesi mulai supaya datanya sama dengan yang di OBS.
-- Teks hook dibuat otomatis dari angka, contoh: `flow selama 14 menit 20 detik` (`?lang=en`: `14 min 20 s in flow`). Bila menit di flow nol, hook memakai state dominan, mis. `dominan calm selama 8 menit`.
+- Teks hook dibuat otomatis dari angka, contoh: `netral selama 14 menit 20 detik` (`?lang=en`: `14 min 20 s neutral`). Bila waktu neutral nol, hook memakai state dominan, mis. `dominan calm selama 8 menit`.
 
 ---
 
@@ -344,17 +348,19 @@ typewave/
       color.js             OKLab mix, smoothstep
       headset.js           status sumber EEG dan headset di halaman: pesan headset, kekinian (3 detik), status bridge, level kontak
       spring.js            critically damped spring
+      orbit.js             proyeksi otak 3D: putar, miring, perspektif lemah (dipakai penggambar dan tools/gen_brain.mjs)
     render/
       scene.js             geometri (s,c) ke kanvas untuk wide/tall
       ribbon.js
       beads.js
       keyboard.js
-      brain.js             ilustrasi otak: kontur, lipatan, percikan
+      brain.js             ilustrasi otak 3D tembus pandang: putaran, proyeksi, agitasi lipatan, percikan
       hud.js               elemen DOM
       report.js
     data/
       layout-ansi75.js
-      brain.js             kontur dan lipatan otak, dihasilkan tools/gen_brain.mjs
+      brain.js             garis otak 3D (posisi dan normal terkuantisasi), dihasilkan tools/gen_brain.mjs
+      brain-decode.js      membuka data otak menjadi larik bertipe
   assets/favicon.svg       ikon halaman
   assets/fonts/
     Anybody-VF.woff2
@@ -386,7 +392,7 @@ typewave/
     inject.py              key palsu lewat WebSocket
     autotype.py            tombol sungguhan lewat OS
     gen_session.mjs        generator sesi sintetis untuk replay
-    gen_brain.mjs          generator kontur dan lipatan otak (reaksi-difusi, seed tetap)
+    gen_brain.mjs          generator otak 3D (reaksi-difusi pada bola, seed tetap; menghitung kotak desain dari proyeksi semua sudut putar)
     fake_muse_lsl.py       streamer Muse palsu (stream LSL) untuk tes dan demo tanpa headset; --degrade merusak kontak satu sensor pada jendela waktu
     fake_eeg_server.py     meniru event state_update server EEG lama
   replay/
@@ -570,7 +576,7 @@ Satu daftar, tanpa fase. Semua butir harus terpenuhi. Penanda: **[otomatis]** di
 
 **Kartu laporan**
 
-17. [otomatis] Untuk sesi sintetis dengan statistik yang diketahui (`tools/gen_session.mjs`), kartu laporan menampilkan durasi, WPM rata-rata dan puncak, menit di flow, jeda terpanjang, dan jumlah backspace yang benar.
+17. [otomatis] Untuk sesi sintetis dengan statistik yang diketahui (`tools/gen_session.mjs`), kartu laporan menampilkan durasi, WPM rata-rata dan puncak, waktu di neutral, jeda terpanjang, dan jumlah backspace yang benar.
 18. [otomatis] Ekspor PNG 1920×1080 dan 1080×1920 berhasil (dimensi dan file valid).
 
 **EEG**
@@ -588,8 +594,8 @@ Satu daftar, tanpa fase. Semua butir harus terpenuhi. Penanda: **[otomatis]** di
 
 **Ilustrasi otak**
 
-26. [otomatis] Ilustrasi otak tampil di atas tengah dengan warna ink grade dan hilang dengan `?brain=0`; satu percikan per ketikan (repeat dibatasi 12 per detik, kapasitas 48); tidak menabrak HUD dan berada di dalam safe zone tall; kontur tidak bergerak, dan tanpa sinyal lipatan diam; biaya gambar p95 di bawah 1 ms.
-27. [kamu] Ilustrasi otak terbaca dan tidak mengganggu di Browser Source OBS dan TikTok LIVE Studio; ukuran dan posisi dituning lewat `CONFIG.layout.*.brain`.
+26. [otomatis] Ilustrasi otak 3D tampil di atas tengah dengan warna ink grade dan hilang dengan `?brain=0`; satu percikan per ketikan (repeat dibatasi 12 per detik, kapasitas 48, yang tertua didaur ulang); tidak menabrak HUD dan berada di dalam safe zone tall; selalu berputar dengan kecepatan tetap (tidak bergantung pada ketikan, pos, hr, level gelombang, atau noSignal) dan tidak berdenyut; tembus pandang (garis sisi belakang tergambar, lebih redup); celah utama dan batang otak tidak bergerak, dan tanpa sinyal lipatan diam; kotak desain memuat otak di setiap sudut putar; satu percikan menyalakan paling banyak 5% panjang lipatan; kerja JS otak sekitar 0,5 ms per frame (sekitar 4 ms dengan raster perangkat lunak dipaksa selesai, headless tanpa GPU) dan waktu gambar satu frame (JS) p95 di bawah 8 ms.
+27. [kamu] Ilustrasi otak terbaca dan tidak mengganggu di Browser Source OBS dan TikTok LIVE Studio, termasuk kepadatan garis dan putarannya pada ukuran sebenarnya; ukuran dan posisi dituning lewat `CONFIG.layout.*.brain` (dan `CONFIG.compact`), terang dan kedalaman lewat `CONFIG.brain.depth`, kecepatan putar lewat `CONFIG.brain.spin`.
 28. [otomatis] Level `theta`/`alpha`/`beta` dari `mind` sampai ke ilustrasi otak: lipatan terbagi tiga kelompok menurut panjang (sepertiga panjang total tiap kelompok, otak kecil di luar kelompok); terang dasar tiap kelompok mengikuti levelnya dengan halus (tanpa kedip) dan jatuh ke netral 0,5 bila data hilang; percikan ketikan memilih kelompok menurut level dengan kecepatan sesuai kelompok; adapter, bridge, `inject.py`, simulator, dan replay meneruskan ketiga level.
 29. [kamu] Dengan headset sungguhan, kelompok garis yang terang terasa sesuai kondisi (santai: garis panjang dan sedang terang; fokus atau tegang: garis pendek terang), dan perbedaannya terbaca di Browser Source OBS pada ukuran otak sebenarnya.
 
@@ -616,7 +622,7 @@ Satu daftar, tanpa fase. Semua butir harus terpenuhi. Penanda: **[otomatis]** di
 
 ## 13. Rencana tes
 
-- **Unit (`node --test`):** `metrics` dengan timeline sintetis (WPM termasuk jendela awal burst, IKI, density, idle, noSignal, pengecualian auto-repeat dan chord Cmd/Ctrl, jam yang disuntik), `color` (ujung interpolasi, plateau flow, saturasi `q`), `spring` (tanpa overshoot, hasil sama untuk dt berbeda), `keys` (klasifikasi), `layout-ansi75` (zona, tangan, normalisasi posisi), hysteresis kata state, `brain` (data, geometri, pemetaan gerak, percikan, pool, kelompok garis, penghalusan level).
+- **Unit (`node --test`):** `metrics` dengan timeline sintetis (WPM termasuk jendela awal burst, IKI, density, idle, noSignal, pengecualian auto-repeat dan chord Cmd/Ctrl, jam yang disuntik), `color` (ujung interpolasi, plateau flow, saturasi `q`), `spring` (tanpa overshoot, hasil sama untuk dt berbeda), `keys` (klasifikasi), `layout-ansi75` (zona, tangan, normalisasi posisi), hysteresis kata state, `orbit` (proyeksi), `brain-data` (pembukaan data, kotak desain di semua sudut putar, jenis garis), `brain` (geometri kotak, putaran tetap, proyeksi, agitasi, percikan, pool, kelompok garis, tembus pandang, penghalusan level, jejak percikan, jalur gambar).
 - **Bridge (Python `unittest`):** `keymap` (semua vk terpetakan, kode unik, tak dikenal jadi `Vk..`), relay ke banyak klien, `hello`, pause dan hotkey, penolakan `Origin`/`Host`, `/status`, perilaku saat izin tidak ada (mock).
 - **Integrasi (Playwright + bridge + `tools/inject.py`):** N pesan `key` masuk semua ke halaman tanpa hilang dan berurutan, latensi, reconnect setelah restart bridge, `?ws=off` dan `?sim=1` tanpa error konsol, replay sesi sintetis menghasilkan angka laporan yang diharapkan.
 - **OS (`tools/autotype.py` + bridge + Chrome headed):** butir 1 dan 5 dengan event OS sungguhan.
@@ -645,6 +651,7 @@ Satu daftar, tanpa fase. Semua butir harus terpenuhi. Penanda: **[otomatis]** di
 | Sumber EEG | Mandiri di `eeg/` (muselsl + LSL + DSP sendiri), tanpa server EEG lain; adapter socket.io tetap opsional. Menggantikan keputusan awal "hanya adapter socket.io" atas permintaan agar proyek independen |
 | Sambung ulang headset | Tanpa batas; jeda 3, 5, 10, 15 detik; reset setelah stabil 30 detik; deteksi stall 5 detik; pindai ulang tiap 3 kegagalan |
 | Akuisisi BLE | Streamer `eeg/muse_streamer.py` (muselsl dengan penyesuaian) di subprocess sendiri (crash atau macet Bluetooth tidak menjatuhkan proses utama), dibaca lewat LSL; versi dependensi dipin. Watchdog bawaan muselsl dimatikan: pengawas TypeWave (proses mati, atau tanpa sampel EEG selama 5 detik) menjadi satu-satunya penentu putus |
+| Ilustrasi otak | 3D dari garis tipis, tembus pandang (tanpa penyembunyian garis), selalu berputar perlahan dengan kecepatan tetap (`CONFIG.brain.spin`), atas permintaan 7 Oktober 2026 setelah melihat prototipe; menggantikan ilustrasi 2D tampak samping. Kelompok gelombang menurut panjang garis labirin utuh |
 | Peluncuran | `npm start`: bridge dan sumber EEG masing-masing diawasi dan dijalankan ulang bila mati |
 | Drum engine saat rekaman ASMR | Di-mute |
 | Arah pita | Kiri ke kanan pada wide (`RIBBON_DIR` di `config.js`), dinilai saat review visual |

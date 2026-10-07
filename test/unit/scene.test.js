@@ -52,8 +52,8 @@ test('wide ringkas di 16:9 persis sama dengan tata letak lama', () => {
 test('wide ringkas di 21:9: skala dari lebar (elemen tetap seukuran), otak penuh, pita naik supaya ruang kosong di bawah hilang', () => {
   const g = createGeom(1920, 823, 'wide', undefined, false, true);
   assert.equal(g.k, 1);
-  assert.ok(near(g.brain.h, 300) && near(g.brain.cy, 183.6, 1e-6) && near(g.brain.cx, 960));
-  assert.ok(near(g.spawnC, 334.8, 1e-6));
+  assert.ok(near(g.brain.h, 350) && near(g.brain.cy, 208.6, 1e-6) && near(g.brain.cx, 960));
+  assert.ok(near(g.spawnC, 384.8, 1e-6)); // tepat di bawah kotak otak: 33,6 + 350 + 1,2
   assert.ok(near(g.center, 623, 1e-6)); // 200 px dari dasar: cukup untuk simpangan terbesar pita
   assert.ok(near(createGeom(1280, 549, 'wide', undefined, false, true).k, 1280 / 1920, 1e-9), 'k mengikuti lebar, bukan sisi pendek');
 });
@@ -70,16 +70,16 @@ test('wide ringkas di rasio 16:9..3:1: pita selalu muat di bawah, tidak menabrak
   }
 });
 
-test('wide tanpa keyboard visual (default): x=s, y=c, skala 1, pita di 58% tinggi dan bead jatuh dari 31%', () => {
+test('wide tanpa keyboard visual (default): x=s, y=c, skala 1, pita di 58% tinggi dan bead jatuh dari tepat di bawah otak (384,8 px)', () => {
   const g = createGeom(1920, 1080, 'wide');
   assert.equal(g.L, 1920); assert.equal(g.A, 1080); assert.equal(g.k, 1); assert.equal(g.tall, false);
   assert.equal(g.x(100, 200), 100); assert.equal(g.y(100, 200), 200);
-  assert.ok(near(g.center, 0.58 * 1080)); assert.ok(near(g.spawnC, 0.31 * 1080));
+  assert.ok(near(g.center, 0.58 * 1080)); assert.ok(near(g.spawnC, 384.8, 1e-6));
 });
 
-test('wide dengan keyboard visual (?keyboard=1): tata letak lama, pita 50% dan spawn 25%', () => {
+test('wide dengan keyboard visual (?keyboard=1): pita kembali ke tengah (50%) dan bead jatuh dari tepat di bawah otak yang lebih kecil (311 px)', () => {
   const g = createGeom(1920, 1080, 'wide', undefined, true);
-  assert.equal(g.center, 540); assert.equal(g.spawnC, 270);
+  assert.equal(g.center, 540); assert.ok(near(g.spawnC, 311, 1e-6)); assert.ok(near(g.brain.h, 286));
 });
 
 test('tall tidak bergantung pada keyboard visual', () => {
@@ -107,11 +107,11 @@ test('skala mengikuti sisi pendek', () => {
   assert.equal(createGeom(2160, 3840, 'tall').k, 2);
 });
 
-test('g.brain wide: di atas tengah (50% lebar, pusat 17% tinggi, tinggi 300 px pada skala 1) dan ikut skala', () => {
+test('g.brain wide: di atas tengah (50% lebar, tinggi 350 px pada skala 1, tepi atas 33,6 px) dan ikut skala', () => {
   const g = createGeom(1920, 1080, 'wide');
-  assert.ok(near(g.brain.cx, 960)); assert.ok(near(g.brain.cy, 0.17 * 1080)); assert.ok(near(g.brain.h, 300));
+  assert.ok(near(g.brain.cx, 960)); assert.ok(near(g.brain.cy, 208.6, 1e-6)); assert.ok(near(g.brain.h, 350));
   const s = createGeom(1280, 720, 'wide');
-  assert.ok(near(s.brain.h, 300 * s.k)); assert.ok(near(s.brain.cy, 0.17 * 720));
+  assert.ok(near(s.brain.h, 350 * s.k)); assert.ok(near(s.brain.cy, (208.6 / 1080) * 720, 1e-6));
 });
 
 test('g.brain wide dengan keyboard visual: naik dan mengecil supaya tidak menabrak titik jatuh bead', () => {
@@ -123,6 +123,6 @@ test('g.brain wide dengan keyboard visual: naik dan mengecil supaya tidak menabr
 test('g.brain tall: di atas, di kanan kolom HUD, tidak bergantung pada keyboard visual', () => {
   const a = createGeom(1080, 1920, 'tall');
   const b = createGeom(1080, 1920, 'tall', undefined, true);
-  assert.ok(near(a.brain.cx, 0.64 * 1080)); assert.ok(near(a.brain.cy, 0.19 * 1920)); assert.ok(near(a.brain.h, 280));
+  assert.ok(near(a.brain.cx, 0.64 * 1080)); assert.ok(near(a.brain.cy, 0.19 * 1920)); assert.ok(near(a.brain.h, 327));
   assert.deepEqual(a.brain, b.brain);
 });

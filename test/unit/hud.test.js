@@ -33,7 +33,7 @@ function setup() {
 test('teks HUD: state word, NN wpm, HR; label id; tidak ada timer sesi', () => {
   const { hud } = setup();
   hud.update(base);
-  assert.equal(hud.el.state.textContent, 'flow');
+  assert.equal(hud.el.state.textContent, 'neutral');
   assert.equal(hud.el.wpm.textContent, '74 wpm');
   assert.equal(hud.el.hr.textContent, '68 bpm');
   assert.equal(hud.el.timer, undefined, 'timer sesi tidak ada di HUD (permintaan user)');

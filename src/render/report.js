@@ -2,7 +2,7 @@
 // tampilan sementara, dan ekspor PNG.
 import { CONFIG } from '../config.js';
 import { gradeInto } from '../core/color.js';
-import { formatDur } from '../core/text.js';
+import { formatDur, labelFor } from '../core/text.js';
 
 const stateOf = (pos) => (pos < CONFIG.zone.calmMax ? 'calm' : pos > CONFIG.zone.tenseMin ? 'tense' : 'flow');
 
@@ -18,9 +18,9 @@ export function dominantState(log) {
 
 export function hookText(sum, lang = 'en') {
   const id = lang === 'id';
-  if (sum.flowSec > 0) return id ? `flow selama ${formatDur(sum.flowSec, 'id')}` : `${formatDur(sum.flowSec, 'en')} in flow`;
+  if (sum.flowSec > 0) return id ? `netral selama ${formatDur(sum.flowSec, 'id')}` : `${formatDur(sum.flowSec, 'en')} neutral`;
   const dom = dominantState(sum.log);
-  if (dom) return id ? `dominan ${dom.word} selama ${formatDur(dom.sec, 'id')}` : `mostly ${dom.word} for ${formatDur(dom.sec, 'en')}`;
+  if (dom) return id ? `dominan ${labelFor(dom.word, 'id')} selama ${formatDur(dom.sec, 'id')}` : `mostly ${labelFor(dom.word, 'en')} for ${formatDur(dom.sec, 'en')}`;
   const d = formatDur(sum.durationMs / 1000, lang);
   return id ? `sesi selama ${d}` : `${d} session`;
 }
@@ -31,9 +31,9 @@ export function buildReport(sum, lang = 'en') {
   const avg = Math.round(sum.avgWpm);
   const peak = Math.round(sum.peakWpm);
   const lines = id
-    ? [`sesi ${dur}`, `rata-rata ${avg} wpm, puncak ${peak}`, `${formatDur(sum.flowSec, 'id')} di flow`,
+    ? [`sesi ${dur}`, `rata-rata ${avg} wpm, puncak ${peak}`, `${formatDur(sum.flowSec, 'id')} netral`,
        `jeda terpanjang ${formatDur(sum.longestGapMs / 1000, 'id')}`, `${sum.backspaces} backspace`]
-    : [`${dur} session`, `${avg} wpm average, ${peak} peak`, `${formatDur(sum.flowSec, 'en')} in flow`,
+    : [`${dur} session`, `${avg} wpm average, ${peak} peak`, `${formatDur(sum.flowSec, 'en')} neutral`,
        `longest pause ${formatDur(sum.longestGapMs / 1000, 'en')}`, `${sum.backspaces} backspaces`];
   const n = sum.log.length;
   const strip = new Float32Array(n * 4);

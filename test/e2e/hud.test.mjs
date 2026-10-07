@@ -9,7 +9,7 @@ after(async () => { await browser?.close(); await bridge?.stop(); });
 
 const IDS = ['hud-state', 'hud-wpm', 'hud-small', 'hud-status'];
 
-test('teks HUD tidak membesar dan mengecil: sumbu huruf, ukuran, dan lebar teks yang sama tetap sama di kondisi tenang, mengalir, dan tegang', async () => {
+test('teks HUD tidak membesar dan mengecil: sumbu huruf, ukuran, dan lebar teks yang sama tetap sama di kondisi tenang, netral, dan tegang', async () => {
   const { page, errors } = await openPage(browser, `${bridge.base}/?debug=1&lang=id`, { viewport: { width: 1280, height: 549 } });
   // Lebar diukur dengan teks yang persis sama di tiap kondisi (kata state dan angka berganti sendiri), jadi hanya sumbu huruf yang bisa mengubahnya.
   const probe = () => page.evaluate((ids) => {
@@ -18,7 +18,7 @@ test('teks HUD tidak membesar dan mengecil: sumbu huruf, ukuran, dan lebar teks 
       const el = document.getElementById(id);
       const cs = getComputedStyle(el);
       const span = document.createElement('span');
-      span.textContent = 'mengalir 0123456789 wpm';
+      span.textContent = 'netral 0123456789 wpm';
       span.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap';
       el.appendChild(span);
       out[id] = { fv: cs.fontVariationSettings, size: cs.fontSize, width: Math.round(span.getBoundingClientRect().width * 10) / 10 };
