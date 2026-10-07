@@ -40,13 +40,13 @@ export function start({ canvas, hudRoot, reportCanvas, panel, win }) {
   gradeInto(grade, 0.5, 1, 1);
   const spr = { rest: createSpring(0, CONFIG.spring.restOmega), noSig: createSpring(1, CONFIG.spring.noSignalOmega) };
   const rp = { thick: 2, amp: 8, speed: 40, rough: 0, wavelength: 420, cr: 0, cg: 0, cb: 0 };
-  const view = { word: '', pos: 0.5, wpm: 0, wpmOn: false, hr: null, noSignal: true, paused: false, lang: params.lang, debugText: null, headset: null, contact: null };
+  const view = { word: '', pos: 0.5, wpm: 0, wpmOn: false, hr: null, noSignal: true, paused: false, lang: params.lang, debugText: null, headset: null };
   const live = { paused: false, secure: false, keysFromBridge: false, listener: 'off' };
   const sweeps = new Float64Array(4).fill(-1e12);
   const perf = { frame: new Float32Array(PERF_N), draw: new Float32Array(PERF_N), n: 0 };
   const trace = { v: new Float32Array(PERF_N), n: 0 };
   const dbg = { at: -1e9, str: '' };
-  const drive = { pos: 0.5, density: 0, noSig: 1, theta: null, alpha: null, beta: null, spin: 1 }; // masukan ilustrasi otak per frame (objek dipakai ulang); spin = pengali kecepatan putar
+  const drive = { pos: 0.5, density: 0, noSig: 1, theta: null, alpha: null, beta: null, spin: 1, contact: null }; // masukan ilustrasi otak per frame (objek dipakai ulang); spin = pengali kecepatan putar
   let g, rb, beads, fp, brain = null, sim = null;
   let breathe = 0, lastTs = 0, lastDt = 0.016, maxDtSeen = 0, maxRawGap = 0, firstFrame = true;
 
@@ -230,7 +230,9 @@ export function start({ canvas, hudRoot, reportCanvas, panel, win }) {
     advanceRibbon(rb, rp.speed * dt, rp);
     updateBeads(beads, rb, g, rp.speed, dt, now);
     if (params.keyboard) decayFootprint(fp, dt);
+    const hs = headset.snapshot(now); // status headset dan level kontak sensor: teks HUD dan titik sensor di otak
     if (brain) {
+      drive.contact = params.contact ? hs.contact : null; // titik sensor Muse di otak; ?contact=0 menyembunyikannya
       drive.pos = snap.pos;
       drive.density = snap.density;
       drive.noSig = clamp(spr.noSig.x);
@@ -256,8 +258,7 @@ export function start({ canvas, hudRoot, reportCanvas, panel, win }) {
     view.hr = snap.hrValid ? snap.hr : null;
     view.noSignal = snap.noSignal;
     view.paused = live.paused;
-    view.headset = headset.snapshot(now);
-    view.contact = params.contact ? view.headset.contact : null;
+    view.headset = hs;
     view.debugText = params.debug ? debugText(now) : null;
     hud.update(view);
 

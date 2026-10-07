@@ -76,27 +76,12 @@ test('setLayout memasang class layout dan skala --k; debugText hanya bila diberi
   assert.equal(hud.el.debug.textContent, 'fps 60');
 });
 
-test('titik sensor: empat titik berurutan TP9, AF7, AF8, TP10 mengikuti level; tampil hanya bila ada kontak; warna terakhir bertahan saat memudar', () => {
+test('blok HR satu baris pendek di bawah wpm: ikon hati lalu HR, tanpa timer dan tanpa indikator sensor (itu ada di otak)', () => {
   const { hud } = setup();
-  assert.equal(hud.el.contact.children.length, 4);
-  hud.update({ ...base, contact: null });
-  assert.equal(hud.el.contact.classes.has('on'), false);
-  hud.update({ ...base, contact: ['good', 'fair', 'poor', 'good'] });
-  assert.equal(hud.el.contact.classes.has('on'), true);
-  assert.deepEqual(hud.el.contact.children.map((d) => d.className), ['dot tp9 good', 'dot af7 fair', 'dot af8 poor', 'dot tp10 good']);
-  hud.update({ ...base, contact: ['good', 'good', 'good', 'good'] });
-  assert.deepEqual(hud.el.contact.children.map((d) => d.className), ['dot tp9 good', 'dot af7 good', 'dot af8 good', 'dot tp10 good']);
-  hud.update({ ...base, contact: null });
-  assert.equal(hud.el.contact.classes.has('on'), false);
-  assert.deepEqual(hud.el.contact.children.map((d) => d.className), ['dot tp9 good', 'dot af7 good', 'dot af8 good', 'dot tp10 good'], 'memudar dengan warna terakhir, tidak berganti');
-});
-
-test('blok kanan atas satu baris pendek: titik sensor, ikon hati, lalu HR (tanpa timer)', () => {
-  const { hud } = setup();
-  assert.deepEqual(hud.el.small.children.map((c) => c.id), ['hud-contact', 'hud-heart', 'hud-hr']);
-  assert.equal(hud.el.small.children[0], hud.el.contact);
-  assert.equal(hud.el.small.children[1], hud.el.heart);
-  assert.equal(hud.el.small.children[2], hud.el.hr);
+  assert.deepEqual(hud.el.small.children.map((c) => c.id), ['hud-heart', 'hud-hr']);
+  assert.equal(hud.el.small.children[0], hud.el.heart);
+  assert.equal(hud.el.small.children[1], hud.el.hr);
+  assert.equal(hud.el.contact, undefined);
 });
 
 test('ikon hati menemani detak jantung: tampil hanya saat HR ada, berupa SVG statis tanpa animasi', () => {

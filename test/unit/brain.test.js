@@ -15,16 +15,16 @@ const seq = (...v) => { let i = 0; return () => v[i++ % v.length]; };
 const linesOfKind = (k) => BRAIN.kinds.map((x, i) => (x === k ? i : -1)).filter((i) => i >= 0);
 
 function fakeCtx(W, H, { log = false } = {}) {
-  const rec = { strokes: 0, fills: 0, alphas: [], fillAlphas: [], widths: [], strokeCalls: [], pathCalls: 0, bad: [], calls: 0, ops: [] };
+  const rec = { strokes: 0, fills: 0, alphas: [], fillAlphas: [], widths: [], strokeCalls: [], pathCalls: 0, bad: [], calls: 0, ops: [], arcs: [], fillStyles: [], strokeStyles: [] };
   const chk = (...n) => { for (const v of n) if (!Number.isFinite(v) || v < -60 || v > Math.max(W, H) + 60) rec.bad.push(v); };
   const ctx = {
     globalAlpha: 1, lineWidth: 1, strokeStyle: '', fillStyle: '', lineJoin: '', lineCap: '',
     beginPath() { rec.pathCalls = 0; if (log) rec.ops.push('b'); }, closePath() {},
     moveTo: (x, y) => { chk(x, y); rec.calls++; rec.pathCalls++; if (log) rec.ops.push(`m${x.toFixed(3)},${y.toFixed(3)}`); },
     lineTo: (x, y) => { chk(x, y); rec.calls++; rec.pathCalls++; if (log) rec.ops.push(`l${x.toFixed(3)},${y.toFixed(3)}`); },
-    arc: (x, y, r) => { chk(x, y); if (!(r >= 0)) rec.bad.push(r); },
-    stroke() { rec.strokes++; rec.alphas.push(ctx.globalAlpha); rec.widths.push(ctx.lineWidth); rec.strokeCalls.push(rec.pathCalls); if (log) rec.ops.push(`s${ctx.globalAlpha.toFixed(4)},${ctx.lineWidth.toFixed(3)}`); },
-    fill() { rec.fills++; rec.alphas.push(ctx.globalAlpha); rec.fillAlphas.push(ctx.globalAlpha); },
+    arc: (x, y, r) => { chk(x, y); if (!(r >= 0)) rec.bad.push(r); rec.arcs.push({ x, y, r, alpha: ctx.globalAlpha }); },
+    stroke() { rec.strokeStyles.push(ctx.strokeStyle); rec.strokes++; rec.alphas.push(ctx.globalAlpha); rec.widths.push(ctx.lineWidth); rec.strokeCalls.push(rec.pathCalls); if (log) rec.ops.push(`s${ctx.globalAlpha.toFixed(4)},${ctx.lineWidth.toFixed(3)}`); },
+    fill() { rec.fillStyles.push(ctx.fillStyle); rec.fills++; rec.alphas.push(ctx.globalAlpha); rec.fillAlphas.push(ctx.globalAlpha); },
   };
   return { ctx, rec };
 }
@@ -649,6 +649,92 @@ test('drawBrain: percikan di sisi belakang lebih redup daripada di sisi depan, t
   assert.equal(rec.fillAlphas.length, 2);
   assert.ok(rec.fillAlphas[1] > 0.05, 'sisi belakang tetap terlihat');
   assert.ok(rec.fillAlphas[0] > rec.fillAlphas[1] * 1.5, `depan ${rec.fillAlphas[0]} vs belakang ${rec.fillAlphas[1]}`);
+});
+
+// --- titik sensor Muse di otak ------------------------------------------------------------------------------------------
+const GOOD = '#7ADFA0'; const FAIR = '#F2B24E'; const POOR = '#FF5E72';
+const LEVELS = ['good', 'fair', 'poor', 'good']; // urutan TP9, AF7, AF8, TP10
+const withContact = (levels, o = {}) => still({ noSig: 0, contact: levels, ...o });
+const settle = (b, d, s = 1.2) => { for (let i = 0; i < Math.round(s / 0.016); i++) stepBrain(b, 0.016, d); };
+const sensorArcs = (rec) => rec.arcs.filter((a) => a.r > 3 && a.alpha > 0);
+
+test('titik sensor: letaknya di permukaan otak sesuai Muse: AF7/AF8 di dahi kiri dan kanan, TP9/TP10 di samping bawah belakang telinga', () => {
+  const b = createBrain();
+  const [tp9, af7, af8, tp10] = Array.from(b.sensor);
+  const P = (i) => [b.x[i], b.y[i], b.z[i]];
+  for (const i of b.sensor) assert.equal(BRAIN.kinds[b.lineOf[i]], 0, 'di lipatan korteks, bukan batang otak');
+  assert.ok(P(tp9)[0] < 0 && P(af7)[0] < 0 && P(af8)[0] > 0 && P(tp10)[0] > 0, 'kiri: x negatif, kanan: x positif');
+  assert.ok(Math.abs(P(af7)[0] + P(af8)[0]) < 0.12 * BRAIN.unit && Math.abs(P(tp9)[0] + P(tp10)[0]) < 0.12 * BRAIN.unit, 'kiri dan kanan simetris');
+  assert.ok(P(af7)[1] > 0.45 * BRAIN.unit && P(af8)[1] > 0.45 * BRAIN.unit, 'dahi di depan');
+  assert.ok(P(tp9)[1] < P(af7)[1] - 0.4 * BRAIN.unit && P(tp10)[1] < P(af8)[1] - 0.4 * BRAIN.unit, 'di belakang telinga lebih ke belakang daripada dahi');
+  assert.ok(Math.abs(P(tp9)[0]) > Math.abs(P(af7)[0]) && Math.abs(P(tp10)[0]) > Math.abs(P(af8)[0]), 'di samping, lebih lateral daripada dahi');
+  assert.ok(P(tp9)[2] < P(af7)[2] && P(tp10)[2] < P(af8)[2], 'lebih rendah daripada dahi');
+});
+
+test('titik sensor: proyeksinya ikut berputar dan sama dengan proyeksi bersama (orbit), tanpa goyang agitasi', () => {
+  const b = createBrain(BRAIN, 0.8);
+  stepBrain(b, 0, still({ pos: 0.95 }));
+  for (let k = 0; k < 4; k++) {
+    const [x, y, d] = restPosition(b, b.sensor[k]);
+    assert.ok(Math.abs(b.sdx[k] - x) < 0.02 && Math.abs(b.sdy[k] - y) < 0.02 && Math.abs(b.sdd[k] - d) < 0.02, `sensor ${k}`);
+  }
+  const before = Array.from(b.sdx);
+  for (let i = 0; i < 40; i++) stepBrain(b, 0.016, drive({ pos: 0.95 }));
+  assert.ok(Array.from(b.sdx).some((x, k) => Math.abs(x - before[k]) > 1), 'ikut berputar');
+});
+
+test('titik sensor: muncul halus selama sekitar 0,6 detik saat ada kontak, memudar saat hilang, dan tanpa kontak tidak tampil', () => {
+  const b = createBrain();
+  assert.equal(brainStats(b).sensors, null);
+  stepBrain(b, 0.1, withContact(LEVELS));
+  const early = brainStats(b).sensorAlpha;
+  assert.ok(early > 0 && early < 0.5, `baru mulai muncul: ${early}`);
+  settle(b, withContact(LEVELS));
+  assert.equal(brainStats(b).sensorAlpha, 1);
+  assert.deepEqual(brainStats(b).sensors, LEVELS);
+  stepBrain(b, 0.1, withContact(null));
+  assert.ok(brainStats(b).sensorAlpha > 0 && brainStats(b).sensorAlpha < 1, 'memudar, tidak hilang seketika');
+  assert.deepEqual(brainStats(b).sensors, LEVELS, 'memudar dengan warna terakhir');
+  settle(b, withContact(null));
+  assert.equal(brainStats(b).sensors, null);
+  settle(b, still({ contact: undefined }));
+  assert.equal(brainStats(b).sensors, null);
+});
+
+test('titik sensor: digambar dengan warna levelnya (hijau, kuning terisi; merah berupa cincin), dan tidak digambar tanpa kontak', () => {
+  const g = createGeom(1920, 1080, 'wide');
+  const b = createBrain();
+  const d = withContact(LEVELS);
+  settle(b, d);
+  const { ctx, rec } = fakeCtx(1920, 1080);
+  drawBrain(ctx, b, g, 'rgb(1,2,3)', d);
+  const count = (arr, c) => arr.filter((x) => x === c).length;
+  assert.equal(count(rec.fillStyles, GOOD), 2, 'dua sensor hijau terisi');
+  assert.equal(count(rec.fillStyles, FAIR), 1, 'satu sensor kuning terisi');
+  assert.equal(count(rec.fillStyles, POOR), 0, 'sensor merah tidak terisi');
+  assert.equal(count(rec.strokeStyles, POOR), 1, 'sensor merah berupa cincin');
+  const off = createBrain();
+  stepBrain(off, 0.016, still());
+  const r2 = fakeCtx(1920, 1080);
+  drawBrain(r2.ctx, off, g, 'rgb(1,2,3)', still());
+  for (const c of [GOOD, FAIR, POOR]) assert.equal(r2.rec.fillStyles.concat(r2.rec.strokeStyles).filter((x) => x === c).length, 0, `${c} tanpa kontak`);
+});
+
+test('titik sensor: cukup besar untuk terbaca (sekitar 10 sampai 16 px pada skala 1), dan yang di sisi belakang tetap tampak tetapi lebih kecil dan redup (tembus pandang)', () => {
+  const g = createGeom(1920, 1080, 'wide'); // skala 1
+  const b = createBrain(BRAIN, 0); // yaw 0: kamera di sisi kiri otak, jadi TP9 dan AF7 menghadap kamera, AF8 dan TP10 di belakang
+  const d = withContact(['good', 'good', 'good', 'good']);
+  settle(b, d);
+  const { ctx, rec } = fakeCtx(1920, 1080);
+  drawBrain(ctx, b, g, 'rgb(1,2,3)', d);
+  const dots = sensorArcs(rec).filter((a) => a.r > 3 && a.r < 20);
+  const byX = (k) => dots.filter((a) => Math.abs(a.x - (brainRect(g).x0 + b.sdx[k] * brainRect(g).s)) < 0.5 && Math.abs(a.y - (brainRect(g).y0 + b.sdy[k] * brainRect(g).s)) < 0.5).at(-1);
+  const front = byX(0); const back = byX(3);
+  assert.ok(front && back, 'dua sensor ditemukan');
+  assert.ok(b.sdf[0] > 0.3 && b.sdf[3] < -0.3, `menghadap ${b.sdf[0]} ${b.sdf[3]}`);
+  assert.ok(front.r >= 5 && front.r <= 9, `jari-jari depan ${front.r}`);
+  assert.ok(back.r < front.r && back.r >= 3.5, `jari-jari belakang ${back.r}`);
+  assert.ok(front.alpha > back.alpha && back.alpha > 0.3, `terang depan ${front.alpha}, belakang ${back.alpha}`);
 });
 
 // --- tiga kelompok garis <-> theta, alpha, beta -----------------------------------------------------

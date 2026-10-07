@@ -85,25 +85,31 @@ test('detak jantung punya ikon hati: sejajar dan menempel di kiri angka, tampil 
   await page.close();
 });
 
-test('blok kanan atas ringkas: satu baris pendek tanpa timer, jauh lebih sempit daripada baris panjang yang lama, dan status panjang dibungkus', async () => {
+test('blok HR di bawah wpm: rata kiri sekolom dengan kata kondisi, satu baris pendek tanpa timer, dan status panjang dibungkus di bawahnya', async () => {
   const W = 1280;
   const k = W / 1920;
   const { page, errors } = await openPage(browser, `${bridge.base}/?debug=1&lang=id`, { viewport: { width: W, height: 549 } });
   await feed(page, 72);
-  await page.waitForFunction(() => document.getElementById('hud-hr').textContent !== '' && document.getElementById('hud-contact').classList.contains('on'));
+  await page.waitForFunction(() => document.getElementById('hud-hr').textContent !== '');
   assert.equal(await page.evaluate(() => document.getElementById('hud-timer')), null, 'timer sesi tidak ada di HUD');
   const small = await rectOf(page, 'hud-small');
   const hr = await rectOf(page, 'hud-hr');
-  const contact = await rectOf(page, 'hud-contact');
-  assert.ok(Math.abs(small.x + small.w - (hr.x + hr.w)) <= 1, 'angka HR di ujung kanan blok (layout wide)');
-  assert.ok(small.h <= contact.h + 2, `blok harus satu baris (setinggi indikator sensor): tinggi ${small.h}px, indikator ${contact.h}px`);
-  assert.ok(small.w < 0.14 * W, `blok terlalu lebar: ${small.w}px dari ${W}px (baris lama sekitar ${Math.round(193)}px)`);
+  const state = await rectOf(page, 'hud-state');
+  const wpm = await rectOf(page, 'hud-wpm');
+  assert.ok(Math.abs(small.x - state.x) <= 1 && Math.abs(wpm.x - state.x) <= 1, `blok HR sekolom dengan kata kondisi dan wpm: ${small.x}, ${wpm.x}, ${state.x}`);
+  assert.ok(small.y >= wpm.y + wpm.h - 1, `blok HR di bawah wpm: ${small.y} vs ${wpm.y + wpm.h}`);
+  const heart = await rectOf(page, 'hud-heart');
+  assert.ok(heart.x + heart.w <= hr.x + 1 && Math.abs(small.x - heart.x) <= 1, 'ikon hati di kiri, lalu angka HR');
+  assert.ok(small.h <= 1.3 * 28 * k + 2, `blok harus satu baris setinggi teks HR: tinggi ${small.h}px`);
+  assert.equal(await page.evaluate(() => document.getElementById('hud-contact')), null, 'indikator sensor tidak ada di HUD (ada di otak)');
+  assert.ok(small.w < 0.11 * W, `blok terlalu lebar: ${small.w}px dari ${W}px (baris lama sekitar ${Math.round(193)}px)`);
   // status panjang tidak boleh melebar: dibungkus jadi dua baris
   await page.evaluate(() => { clearInterval(window.__m); clearInterval(window.__h); const beat = () => window.__typewave.emit('headset', { state: 'reconnecting', attempt: 2 }); beat(); window.__h = setInterval(beat, 200); });
   await page.waitForFunction(() => document.getElementById('hud-status').textContent.startsWith('menyambung ulang'));
   const status = await rectOf(page, 'hud-status');
-  assert.ok(status.w <= 340 * k + 1, `status terlalu lebar: ${status.w}px`);
-  assert.ok(status.h > 1.8 * 28 * k, `status panjang harus dibungkus dua baris: tinggi ${status.h}px`);
+  assert.ok(status.w <= 245 * k + 1, `status terlalu lebar: ${status.w}px`); // sekitar 240 px pada skala 1: lebih sempit daripada kata kondisi terlebar (neutral, sekitar 374 px)
+  assert.ok(Math.abs(status.x - state.x) <= 1, 'status rata kiri sekolom');
+  assert.ok(status.h > 1.8 * 28 * k, `status panjang harus dibungkus jadi beberapa baris: tinggi ${status.h}px`);
   const small2 = await rectOf(page, 'hud-small');
   assert.ok(status.y >= small2.y + small2.h - 1, `status menimpa blok HR: status.y ${status.y}, blok bawah ${small2.y + small2.h}`);
   assert.deepEqual(errors, []);
@@ -138,26 +144,4 @@ test('angka di HUD berlebar tetap (tabular): detak jantung dan wpm tidak bergoya
   }
   assert.deepEqual(errors, []);
   await page.close();
-});
-
-test('indikator sensor (kepala dengan empat titik) cukup besar dan jelas: minimal dua kali tinggi teks HR, titiknya tidak kecil, dan tidak melebihi kata kondisi', async () => {
-  for (const [layout, viewport] of [['wide', { width: 1280, height: 549 }], ['tall', { width: 540, height: 960 }]]) {
-    const { page, errors } = await openPage(browser, `${bridge.base}/?debug=1&lang=id&layout=${layout}`, { viewport });
-    await feed(page, 72);
-    await page.waitForFunction(() => document.getElementById('hud-contact').classList.contains('on'));
-    const m = await page.evaluate(() => {
-      const r = (el) => { const b = el.getBoundingClientRect(); return { w: b.width, h: b.height }; };
-      return {
-        glyph: r(document.getElementById('hud-contact')),
-        dots: [...document.querySelectorAll('#hud-contact .dot')].map(r),
-        hrFont: parseFloat(getComputedStyle(document.getElementById('hud-hr')).fontSize),
-        stateFont: parseFloat(getComputedStyle(document.getElementById('hud-state')).fontSize),
-      };
-    });
-    assert.ok(m.glyph.h >= 2 * m.hrFont, `${layout}: indikator terlalu kecil: ${m.glyph.h}px, teks HR ${m.hrFont}px`);
-    assert.ok(m.glyph.h <= m.stateFont, `${layout}: indikator melebihi kata kondisi: ${m.glyph.h}px dari ${m.stateFont}px`);
-    for (const d of m.dots) assert.ok(d.w >= 0.22 * m.glyph.h, `${layout}: titik terlalu kecil: ${d.w}px dari indikator ${m.glyph.h}px`);
-    assert.deepEqual(errors, []);
-    await page.close();
-  }
 });

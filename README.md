@@ -32,7 +32,7 @@ Satu pita cahaya bereaksi pada dua hal sekaligus: **ketikanmu** (setiap tombol d
 - **Status headset terlihat:** halaman menulis apa yang sedang terjadi (menyambung, menyambung ulang percobaan ke-N, menyiapkan sinyal, cek sensor), dan empat titik kecil menunjukkan tiap sensor Muse: hijau = menempel baik, kuning = kurang bagus, cincin merah = buruk. Berguna saat memasang headset dan saat sambungan putus.
 - **Privat:** hanya kode tombol fisik yang dipakai (tidak pernah karakter), dan tidak ada ketikan yang disimpan.
 
-**In English:** TypeWave draws one ribbon of light that reacts to every keystroke on your machine (any app) and to your brain state from a Muse EEG headset. Colors, wave shape, and a slowly rotating 3D brain drawn in thin see-through lines (three line groups for theta, alpha, and beta) follow calm, neutral, and tense. It runs as an OBS Browser Source (horizontal or 9:16 vertical for TikTok), reads the headset over Bluetooth with automatic reconnect, and needs no other EEG server. No headset? Try the [live demo](https://freakandstein.github.io/typewave/) or run `npm run start:fake`. A small head icon shows whether each of the four sensors has good contact, and the HUD says what the headset link is doing (connecting, reconnecting, attempt N). Only physical key codes are used, never characters, and nothing is written to disk.
+**In English:** TypeWave draws one ribbon of light that reacts to every keystroke on your machine (any app) and to your brain state from a Muse EEG headset. Colors, wave shape, and a slowly rotating 3D brain drawn in thin see-through lines (three line groups for theta, alpha, and beta) follow calm, neutral, and tense. It runs as an OBS Browser Source (horizontal or 9:16 vertical for TikTok), reads the headset over Bluetooth with automatic reconnect, and needs no other EEG server. No headset? Try the [live demo](https://freakandstein.github.io/typewave/) or run `npm run start:fake`. Four dots on the brain, at the real Muse sensor positions, show whether each sensor has good contact, and the HUD says what the headset link is doing (connecting, reconnecting, attempt N). Only physical key codes are used, never characters, and nothing is written to disk.
 
 ## Galeri
 
@@ -116,7 +116,7 @@ Jalankan dari **Terminal.app**, bukan dari terminal editor yang bisa mematikan p
 | EEG: `spectrum_pos` (tenang ke tegang) | warna seluruh frame, kekasaran tepi, panjang gelombang dan kehalusan gelombang (tenang = panjang dan mulus, tegang = rapat dan patah), dan seberapa gelisah lipatan otak |
 | EEG: detak jantung (`hr`) | angka `bpm` dengan ikon hati di HUD (ikonnya diam, tidak berdenyut) dan latar "bernapas" (ilustrasi otak tidak ikut berdenyut) |
 | EEG: level theta, alpha, beta | terang tiga jenis garis di ilustrasi otak (panjang = theta lambat, sedang = alpha, pendek = beta cepat) dan jenis garis yang dinyalakan percikan ketikan |
-| EEG: status sambungan dan kualitas tiap sensor | teks status di HUD dan empat titik sensor di baris detak jantung; tidak mengubah warna atau gelombang (bagian EEG di bawah) |
+| EEG: status sambungan dan kualitas tiap sensor | teks status di HUD dan empat titik sensor di otak 3D; tidak mengubah warna atau gelombang (bagian EEG di bawah) |
 
 Bentuk dasar gelombang dibuat dari rumus sinus; yang membawa data adalah tinggi, kecepatan, panjang gelombang, dan kehalusannya.
 
@@ -190,7 +190,7 @@ Listener hanya membaca, jadi chord hotkey tetap sampai ke aplikasi yang sedang f
 | `controls` | `0`, `1` (tombol ekspor PNG) | `0` |
 | `keyboard` | `0`, `1` (siluet keyboard di bawah pita; pita naik ke tengah layar) | `0` |
 | `brain` | `0`, `1` (ilustrasi otak di atas tengah) | `1` |
-| `contact` | `0`, `1` (empat titik sensor Muse di HUD saat headset tersambung; teks status tetap tampil) | `1` |
+| `contact` | `0`, `1` (empat titik sensor Muse di otak saat headset tersambung; teks status tetap tampil) | `1` |
 
 Halaman selalu menampilkan bingkai horizontal 21:9 (`wide`, bentuknya bisa diubah dengan `?ratio=`) atau vertikal 9:16 (`tall`) yang utuh di tengah jendela, jadi komposisinya sama dengan di OBS apa pun bentuk jendelanya; jendela yang bentuknya berbeda mendapat bilah hitam (transparan dengan `?transparent=1`). Di OBS dengan ukuran sumber 1920×823 (21:9; atau 1920×1080 dengan `?ratio=16:9`, atau 1080×1920 untuk `tall`) bingkai memenuhi sumber tanpa bilah.
 
@@ -244,7 +244,7 @@ Sumber EEG mengirim pesan `headset` 5 kali per detik, terpisah dari `mind` dan j
 | `bridge disconnected` / `bridge terputus` | halaman kehilangan bridge; pulih sendiri saat bridge hidup lagi |
 | `no signal` / `tanpa sinyal` | seperti dulu: tidak ada data dan sumber EEG belum pernah terlihat (mis. tanpa headset) |
 
-Empat titik di baris detak jantung (di kiri ikon hati pada layout horizontal, di ujung baris pada vertikal) adalah kepala dilihat dari atas (dahi di atas): dua di dahi (AF7, AF8) dan dua di belakang telinga (TP9, TP10). **Hijau** = sinyal bagus, dipakai untuk menghitung level otak; **kuning** = kurang bagus (sangat tipis atau berisik), belum dipakai; **cincin merah** = buruk (datar atau liar), tidak dipakai, biasanya sensor belum menempel pada kulit. Warna dihaluskan 1,5 detik, jadi kedipan sesaat tidak mengubahnya, dan titik hanya tampil selama tersambung. Satu sensor yang tidak hijau tidak menghentikan apa pun: `mind` tetap dihitung dari sensor hijau yang tersisa (minimal satu). `?contact=0` menyembunyikan titik (teks status tetap).
+Empat titik di otak 3D berada di posisi sensor Muse pada kepala: dua di dahi kiri dan kanan (AF7, AF8) dan dua di samping bawah di belakang telinga (TP9, TP10). Titiknya ikut berputar bersama otak dan tetap tampak di sisi belakang (lebih kecil dan redup). **Hijau** = sinyal bagus, dipakai untuk menghitung level otak; **kuning** = kurang bagus (sangat tipis atau berisik), belum dipakai; **cincin merah** = buruk (datar atau liar), tidak dipakai, biasanya sensor belum menempel pada kulit. Warna dihaluskan 1,5 detik, jadi kedipan sesaat tidak mengubahnya, dan titik hanya tampil selama tersambung. Satu sensor yang tidak hijau tidak menghentikan apa pun: `mind` tetap dihitung dari sensor hijau yang tersisa (minimal satu). `?contact=0` menyembunyikan titik (teks status tetap).
 
 Kualitas dihitung dari simpangan baku sinyal 2 detik terakhir dengan ambang yang sama seperti pemrosesan sinyal (kanal di bawah 0,65 tidak dipakai). Ambang itu belum dicoba dengan headset sungguhan, jadi bisa perlu disetel. Teks galat (yang bisa memuat alamat Bluetooth) sengaja tidak dikirim ke halaman, karena halaman ini tampil di layar siaran.
 

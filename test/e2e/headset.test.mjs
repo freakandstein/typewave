@@ -6,21 +6,20 @@ let bridge, browser;
 before(async () => { bridge = await startBridge(await freePort()); browser = await launch(); });
 after(async () => { await browser?.close(); await bridge?.stop(); });
 
-// Apa yang tampak di HUD: teks status, apakah titik sensor tampil, dan level tiap titik (urutan TP9, AF7, AF8, TP10).
-const readHud = (page) => page.evaluate(() => ({
-  status: document.getElementById('hud-status').textContent,
-  on: document.getElementById('hud-contact').classList.contains('on'),
-  dots: [...document.querySelectorAll('#hud-contact .dot')].map((d) => [...d.classList].slice(1).join(' ')),
-}));
+// Apa yang tampak: teks status di HUD, apakah titik sensor tampil di otak, dan level tiap titik (urutan TP9, AF7, AF8, TP10; 'tp9 good', ...).
+const NAMES = ['tp9', 'af7', 'af8', 'tp10'];
+const readHud = (page) => page.evaluate((names) => {
+  const b = window.__typewave.state().brain;
+  const lv = b ? b.sensors : null;
+  return { status: document.getElementById('hud-status').textContent, on: lv !== null, dots: lv ? lv.map((l, i) => `${names[i]} ${l}`) : [] };
+}, NAMES);
 const until = (page, pred, timeout = 8000) => page.waitForFunction(pred, null, { timeout, polling: 100 });
-const hudIs = (page, want, timeout) => page.waitForFunction((w) => {
-  const hud = {
-    status: document.getElementById('hud-status').textContent,
-    on: document.getElementById('hud-contact').classList.contains('on'),
-    dots: [...document.querySelectorAll('#hud-contact .dot')].map((d) => [...d.classList].slice(1).join(' ')),
-  };
+const hudIs = (page, want, timeout) => page.waitForFunction(([w, names]) => {
+  const b = window.__typewave.state().brain;
+  const lv = b ? b.sensors : null;
+  const hud = { status: document.getElementById('hud-status').textContent, on: lv !== null, dots: lv ? lv.map((l, i) => `${names[i]} ${l}`) : [] };
   return Object.entries(w).every(([k, v]) => JSON.stringify(hud[k]) === JSON.stringify(v));
-}, want, { timeout: timeout ?? 8000, polling: 100 });
+}, [want, NAMES], { timeout: timeout ?? 8000, polling: 100 });
 
 // Menirukan sumber EEG: pesan headset diulang tiap 200 ms (detak), dan mind (opsional) supaya halaman punya sinyal.
 const beat = (page, msg) => page.evaluate((m) => {
@@ -41,19 +40,12 @@ const mind = (page, on) => page.evaluate((go) => {
 
 const GOOD = ['tp9 good', 'af7 good', 'af8 good', 'tp10 good'];
 
-test('HUD: tiap keadaan headset punya teks sendiri, titik sensor mengikuti kontak dan hilang saat putus', async () => {
+test('HUD dan otak: tiap keadaan headset punya teks sendiri, titik sensor di otak mengikuti kontak dan memudar saat putus', async () => {
   const { page, errors } = await openPage(browser, `${bridge.base}/?debug=1&lang=id`);
   await hudIs(page, { status: 'tanpa sinyal', on: false });
 
   await beat(page, { state: 'connected', contact: [1, 0.5, 0.1, 0.9] });
   await hudIs(page, { status: 'menyiapkan sinyal', on: true, dots: ['tp9 good', 'af7 fair', 'af8 poor', 'tp10 good'] });
-  await page.waitForTimeout(800); // warna berubah halus (500 ms)
-  const paint = await page.evaluate(() => [...document.querySelectorAll('#hud-contact .dot')].map((d) => { const c = getComputedStyle(d); return [c.backgroundColor, c.borderTopColor]; }));
-  const good = ['rgb(122, 223, 160)', 'rgb(122, 223, 160)'];
-  const fair = ['rgb(242, 178, 78)', 'rgb(242, 178, 78)'];
-  const poor = ['rgba(0, 0, 0, 0)', 'rgb(255, 94, 114)']; // cincin: bentuk ikut membedakan, bukan hanya warna
-  assert.deepEqual(paint, [good, fair, poor, good]);
-
   await beat(page, { state: 'connected', contact: [0, 0, 0, 0] });
   await hudIs(page, { status: 'cek sensor', on: true, dots: ['tp9 poor', 'af7 poor', 'af8 poor', 'tp10 poor'] });
 
@@ -77,42 +69,24 @@ test('HUD: tiap keadaan headset punya teks sendiri, titik sensor mengikuti konta
   await page.close();
 });
 
-test('?contact=0 menyembunyikan titik sensor tetapi teks status tetap tampil; label en', async () => {
-  const { page, errors } = await openPage(browser, `${bridge.base}/?debug=1&contact=0`);
-  await beat(page, { state: 'connected', contact: [1, 1, 1, 1] });
-  await hudIs(page, { status: 'warming up' });
-  assert.equal((await readHud(page)).on, false);
-  await beat(page, { state: 'reconnecting', attempt: 1 });
-  await hudIs(page, { status: 'reconnecting, attempt 1' });
-  assert.deepEqual(errors, []);
-  await page.close();
-});
-
-test('titik sensor tidak menabrak HR, tetap di dalam bingkai, di layout wide dan tall; HR tidak bergeser saat titik muncul', async () => {
+test('titik sensor di otak tidak menggeser HUD, tampil di wide dan tall, dan ?contact=0 menyembunyikannya sementara teks status tetap tampil', async () => {
   for (const [layout, viewport] of [['wide', { width: 1280, height: 549 }], ['tall', { width: 540, height: 960 }]]) {
     const { page, errors } = await openPage(browser, `${bridge.base}/?debug=1&layout=${layout}`, { viewport });
-    await mind(page, true);
-    await page.evaluate(() => window.__typewave.emit('mind', { pos: 0.5, hr: 72, q: 1 }));
-    await page.evaluate(() => { window.__mind2 = setInterval(() => window.__typewave.emit('mind', { pos: 0.5, hr: 72, q: 1 }), 200); });
+    await page.evaluate(() => { window.__m = setInterval(() => window.__typewave.setMind({ pos: 0.5, hr: 72, q: 1 }), 200); });
     await until(page, () => document.getElementById('hud-hr').textContent !== '');
-    const rects = () => page.evaluate(() => {
-      const r = (id) => { const b = document.getElementById(id).getBoundingClientRect(); return { x: b.x, y: b.y, w: b.width, h: b.height }; };
-      const st = document.getElementById('stage').getBoundingClientRect();
-      return { hr: r('hud-hr'), contact: r('hud-contact'), stage: { x: st.x, y: st.y, w: st.width, h: st.height } };
-    });
-    const before = await rects();
+    const hr = () => page.evaluate(() => { const b = document.getElementById('hud-hr').getBoundingClientRect(); return [b.x, b.y]; });
+    const before = await hr();
     await beat(page, { state: 'connected', contact: [1, 0.5, 0.1, 0.9] });
-    await hudIs(page, { on: true });
-    const after = await rects();
-    assert.deepEqual([after.hr.x, after.hr.y], [before.hr.x, before.hr.y], `${layout}: HR tidak boleh bergeser`);
-    const c = after.contact;
-    const disjoint = (a, b) => a.x + a.w <= b.x + 0.5 || b.x + b.w <= a.x + 0.5 || a.y + a.h <= b.y + 0.5 || b.y + b.h <= a.y + 0.5;
-    assert.ok(disjoint(c, after.hr), `${layout}: titik sensor menabrak HR ${JSON.stringify(after)}`);
-    const s = after.stage;
-    assert.ok(c.x >= s.x && c.y >= s.y && c.x + c.w <= s.x + s.w && c.y + c.h <= s.y + s.h, `${layout}: di luar bingkai`);
-    assert.ok(c.w > 8 && c.h > 8, `${layout}: terlalu kecil ${c.w}x${c.h}`);
-    assert.deepEqual(errors, []);
+    await hudIs(page, { on: true, dots: ['tp9 good', 'af7 fair', 'af8 poor', 'tp10 good'] });
+    assert.deepEqual(await hr(), before, `${layout}: HR tidak boleh bergeser`);
     await page.close();
+    const off = await openPage(browser, `${bridge.base}/?debug=1&layout=${layout}&contact=0`, { viewport });
+    await beat(off.page, { state: 'connected', contact: [0, 0, 0, 0] });
+    await hudIs(off.page, { status: 'check the sensors' });
+    await off.page.waitForTimeout(1000);
+    assert.equal((await readHud(off.page)).on, false, `${layout}: ?contact=0 menyembunyikan titik sensor`);
+    assert.deepEqual([...errors, ...off.errors], []);
+    await off.page.close();
   }
 });
 

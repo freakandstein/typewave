@@ -31,6 +31,10 @@ const SPARK_FLOOR = 0.3; // percikan di sisi belakang tetap terlihat: terang min
 const SP = CONFIG.brain.spark;
 const BND = CONFIG.brain.bands;
 const DP = CONFIG.brain.depth;
+const SN = CONFIG.brain.sensor;
+const LEVEL_NAMES = [null, 'good', 'fair', 'poor'];
+// Arah sensor Muse dari pusat otak (x kiri-kanan, y depan, z atas), urutan TP9, AF7, AF8, TP10: dahi kiri dan kanan, dan samping bawah di belakang telinga.
+const SENSOR_DIRS = [[-0.95, -0.10, -0.35], [-0.50, 0.82, 0.30], [0.50, 0.82, 0.30], [0.95, -0.10, -0.35]];
 
 // Kelompok menurut panjang: tiap kelompok membawa sepertiga dari panjang total garis. 0 = terpanjang (theta), 1 = sedang (alpha),
 // 2 = terpendek (beta). Garis panjang jadi lebih sedikit, garis pendek lebih banyak.
@@ -106,6 +110,24 @@ function staticOf(data) {
   }
   const famOfChain = assignFamilies(lens);
   for (let li = 0; li < lines; li++) if (D.kind[li] === 0) family[li] = famOfChain[slot.get(D.chain[li])];
+  // Titik sensor Muse: lipatan yang arahnya dari pusat otak (dinormalkan per sumbu) paling dekat dengan arah sensor dan yang normalnya menghadap ke luar ke arah itu.
+  const sensor = new Int32Array(4).fill(-1);
+  {
+    let mx = 0; let my = 0; let mz = 0; let hx = 1e-6; let hy = 1e-6; let hz = 1e-6;
+    for (let i = 0; i < foldEnd; i++) { mx += D.x[i]; my += D.y[i]; mz += D.z[i]; }
+    mx /= foldEnd || 1; my /= foldEnd || 1; mz /= foldEnd || 1;
+    for (let i = 0; i < foldEnd; i++) { hx = Math.max(hx, Math.abs(D.x[i] - mx)); hy = Math.max(hy, Math.abs(D.y[i] - my)); hz = Math.max(hz, Math.abs(D.z[i] - mz)); }
+    SENSOR_DIRS.forEach((t, k) => {
+      const tl = Math.hypot(t[0], t[1], t[2]);
+      let best = -Infinity;
+      for (let i = 0; i < foldEnd; i++) {
+        const vx = (D.x[i] - mx) / hx; const vy = (D.y[i] - my) / hy; const vz = (D.z[i] - mz) / hz;
+        const vl = Math.hypot(vx, vy, vz) || 1;
+        const score = (vx * t[0] + vy * t[1] + vz * t[2]) / (vl * tl) + 0.5 * (D.nx[i] * t[0] + D.ny[i] * t[1] + D.nz[i] * t[2]) / tl;
+        if (score > best) { best = score; sensor[k] = i; }
+      }
+    });
+  }
   // Segmen: titik i ke i+1 pada garis yang sama; segCont = 1 bila segmen sebelumnya (s-1) satu garis, supaya jalur disambung tanpa moveTo.
   const nSeg = n - lines;
   const segA = new Int32Array(nSeg);
@@ -135,7 +157,7 @@ function staticOf(data) {
     const [iz, tz] = cellOf(D.z[i], z0, span[2], GZ);
     cell[i] = iz * NSZ + iy * NSY + ix; fx[i] = tx; fy[i] = ty; fz[i] = tz;
   }
-  s = { D, lineOf, segLen, closed, mobile, lit, family, foldEnd, nSeg, segA, segLine, segCont, nodePos, cell, fx, fy, fz };
+  s = { sensor, D, lineOf, segLen, closed, mobile, lit, family, foldEnd, nSeg, segA, segLine, segCont, nodePos, cell, fx, fy, fz };
   STATIC.set(data, s);
   return s;
 }
@@ -154,6 +176,7 @@ export function createBrain(data = BRAIN, yaw = CONFIG.brain.yaw0) {
     sx: new Float32Array(n), sy: new Float32Array(n), // piksel
     energy: new Float32Array(lines), lineMin: new Float32Array(lines),
     level: new Float32Array(3).fill(0.5), famAlpha: new Float32Array(4),
+    sensor: st.sensor, sdx: new Float32Array(4), sdy: new Float32Array(4), sdd: new Float32Array(4), sdf: new Float32Array(4), sensLevel: new Uint8Array(4), sensA: 0,
     lat: new Float32Array(NODES * 3), ph: new Float64Array(6), mot: { amp: 0, speed: 0, rough: 0 },
     repTimes: new Float64Array(CONFIG.beads.rep.perSec).fill(-Infinity), repIdx: 0,
     trail: new Float32Array(TRAIL_MAX * 2),
@@ -189,7 +212,8 @@ export function brainMotion(pos, noSig, out = { amp: 0, speed: 0, rough: 0 }) {
 export function brainStats(b) {
   let lit = 0;
   for (let i = 0; i < b.lines; i++) if (b.lit[i] && b.energy[i] > 0.02) lit++;
-  return { sparks: b.spark.count, lit, levels: [b.level[0], b.level[1], b.level[2]], yaw: b.yaw, drawn: b.drawn, drawnBack: b.drawnBack };
+  const sensors = b.sensA > 0 ? Array.from(b.sensLevel, (l) => LEVEL_NAMES[l]) : null; // level kontak tiap sensor yang sedang tampak (atau memudar), atau null
+  return { sparks: b.spark.count, lit, levels: [b.level[0], b.level[1], b.level[2]], yaw: b.yaw, drawn: b.drawn, drawnBack: b.drawnBack, sensors, sensorAlpha: b.sensA };
 }
 
 // --- proyeksi: titik model (dengan agitasi pada lipatan) -> kotak desain, kedalaman, dan menghadap kamera ---------------------
@@ -228,6 +252,13 @@ function project(b) {
     dx[i] = cx + dx[i];
     dy[i] = cy - dy[i];
     df[i] = -(b.nx[i] * v.cy - b.ny[i] * v.sy) * v.cp + b.nz[i] * v.sp;
+  }
+  for (let k = 0; k < 4; k++) { // titik sensor: posisi istirahat (tanpa agitasi), jadi tidak ikut bergoyang
+    const i = b.sensor[k];
+    projectInto(v, b.kp, b.x[i], b.y[i], b.z[i], b.sdx, b.sdy, b.sdd, k);
+    b.sdx[k] = cx + b.sdx[k];
+    b.sdy[k] = cy - b.sdy[k];
+    b.sdf[k] = -(b.nx[i] * v.cy - b.ny[i] * v.sy) * v.cp + b.nz[i] * v.sp;
   }
 }
 
@@ -358,6 +389,10 @@ export function stepBrain(b, dt, d) {
     }
   }
   project(b);
+  const contact = d.contact; // level kontak tiap sensor ('good' | 'fair' | 'poor') atau null/undefined: tanpa kontak segar titik memudar
+  if (contact) for (let k = 0; k < 4; k++) b.sensLevel[k] = contact[k] === 'good' ? 1 : contact[k] === 'fair' ? 2 : 3;
+  const fade = (dt * 1000) / SN.fadeMs;
+  b.sensA = contact ? Math.min(1, b.sensA + fade) : Math.max(0, b.sensA - fade);
   const de = (dt * 1000) / CONFIG.brain.energyMs;
   for (let i = 0; i < b.lines; i++) if (b.energy[i] > 0) b.energy[i] = Math.max(0, b.energy[i] - de);
   const S = b.spark;
@@ -413,6 +448,7 @@ export function drawBrain(ctx, b, g, inkCss, d) {
   const R = brainRect(g);
   const sc = R.s;
   const k = g.k;
+  const k0 = g.k;
   for (let i = 0; i < b.n; i++) { b.sx[i] = R.x0 + b.dx[i] * sc; b.sy[i] = R.y0 + b.dy[i] * sc; }
 
   const dens = lerp(C.alpha.base[0], C.alpha.base[1], clamp(d.density / CONFIG.ribbon.densityAmpMax));
@@ -486,6 +522,25 @@ export function drawBrain(ctx, b, g, inkCss, d) {
   }
   b.drawn = drawn;
   b.drawnBack = drawnBack;
+
+  if (b.sensA > 0) { // titik sensor Muse: selalu tampak (juga di sisi belakang, lebih kecil dan redup), warna menurut kontak, di atas garis
+    for (let k = 0; k < 4; k++) {
+      const face = smoothstep(FACE_LO, FACE_HI, b.sdf[k]);
+      const x = R.x0 + b.sdx[k] * sc;
+      const y = R.y0 + b.sdy[k] * sc;
+      const r = (SN.r[0] + (SN.r[1] - SN.r[0]) * face) * k0;
+      const a = b.sensA * (0.6 + 0.4 * face);
+      const col = SN.colors[LEVEL_NAMES[b.sensLevel[k]]];
+      ctx.globalAlpha = a * 0.55; // alas gelap supaya titik terbaca di atas garis
+      ctx.fillStyle = 'rgb(0,0,0)';
+      ctx.beginPath(); ctx.arc(x, y, r + 2.5 * k0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = a;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+      if (b.sensLevel[k] === 3) { ctx.strokeStyle = col; ctx.lineWidth = Math.max(1.5, r * 0.32); ctx.stroke(); } else { ctx.fillStyle = col; ctx.fill(); }
+    }
+    ctx.strokeStyle = inkCss;
+    ctx.fillStyle = inkCss;
+  }
 
   const S = b.spark;
   const T = b.trail;

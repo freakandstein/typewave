@@ -2,7 +2,6 @@
 import { CONFIG } from '../config.js';
 import { labelFor, headsetText } from '../core/text.js';
 
-const SENSORS = ['tp9', 'af7', 'af8', 'tp10']; // urutan sama dengan kontak di pesan headset
 // Ikon hati untuk detak jantung: SVG statis (tidak berdenyut), berwarna lewat CSS (currentColor).
 const HEART_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 20.6C6.6 16.4 3 13.2 3 9.1 3 6.3 5.1 4.2 7.7 4.2c1.8 0 3.4.9 4.3 2.4.9-1.5 2.5-2.4 4.3-2.4C18.9 4.2 21 6.3 21 9.1c0 4.1-3.6 7.3-9 11.5z"/></svg>';
 
@@ -19,21 +18,15 @@ export function createHud(root, doc = document) {
   };
   const hr = doc.createElement('span');
   hr.id = 'hud-hr';
-  // Kepala dilihat dari atas dengan empat titik sensor Muse: dua di dahi (AF7, AF8) dan dua di belakang telinga (TP9, TP10). Bentuknya CSS di index.html.
-  const contact = doc.createElement('div');
-  contact.id = 'hud-contact';
-  contact.className = 'hud-contact';
-  const dots = SENSORS.map((name) => { const d = doc.createElement('i'); d.className = `dot ${name}`; contact.appendChild(d); return d; });
-  el.contact = contact;
   const heart = doc.createElement('i');
   heart.id = 'hud-heart';
   heart.className = 'hud-heart';
   heart.innerHTML = HEART_SVG;
-  // Kanan atas satu baris pendek: titik sensor, ikon hati, lalu HR. Tanpa timer sesi (permintaan user: tidak perlu, dan angkanya yang berganti tiap detik terasa bergoyang).
+  // Baris HR di bawah wpm: ikon hati lalu HR. Titik sensor Muse ada di otak 3D (render/brain.js). Tanpa timer sesi (permintaan user: tidak perlu, dan angkanya yang berganti tiap detik terasa bergoyang).
   Object.assign(el, { hr, heart });
-  el.small.append(contact, heart, hr);
+  el.small.append(heart, hr);
 
-  const last = { state: null, wpm: null, hr: null, status: null, wpmOn: null, debug: null, levels: null, contactOn: null, heartOn: null };
+  const last = { state: null, wpm: null, hr: null, status: null, wpmOn: null, debug: null, heartOn: null };
   const set = (node, key, text) => { if (last[key] !== text) { last[key] = text; node.textContent = text; } };
 
   return {
@@ -52,12 +45,6 @@ export function createHud(root, doc = document) {
       if (hasHr !== last.heartOn) { last.heartOn = hasHr; heart.classList.toggle('on', hasHr); }
       const status = [headsetText(v.headset, v.noSignal, v.lang), v.paused ? labelFor('paused', v.lang) : ''].filter(Boolean).join('  ');
       set(el.status, 'status', status);
-      const lv = v.contact || null; // level tiap sensor ('good' | 'fair' | 'poor') atau null: titik hanya tampil saat ada kontak segar
-      if (lv) {
-        const key = lv.join(',');
-        if (key !== last.levels) { last.levels = key; lv.forEach((l, i) => { dots[i].className = `dot ${SENSORS[i]} ${l}`; }); }
-      }
-      if (!!lv !== last.contactOn) { last.contactOn = !!lv; contact.classList.toggle('on', !!lv); }
       if (v.debugText !== undefined && v.debugText !== null) set(el.debug, 'debug', v.debugText);
     },
   };

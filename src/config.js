@@ -88,6 +88,9 @@ export const CONFIG = Object.freeze({
       speed: [0.55, 1, 1.6], trail: [1.3, 1, 0.7],
     }),
     line: Object.freeze({ spark: 2.6, head: 4.2 }),
+    // Titik sensor Muse di permukaan otak (urutan TP9, AF7, AF8, TP10), tampil selama ada kontak segar: jari-jari px pada skala 1 di sisi belakang dan depan,
+    // warna menurut kualitas kontak (poor = cincin). Ambang kualitas ada di CONFIG.headset.
+    sensor: Object.freeze({ r: [6, 8.5], fadeMs: 600, colors: Object.freeze({ good: '#7ADFA0', fair: '#F2B24E', poor: '#FF5E72' }) }),
     motion: Object.freeze({ amp: [1.5, 6], speed: [0.35, 2.4], roughFrom: 0.5, rough: 0.6 }), // amp: satuan desain
     energyMs: 700,
     spark: Object.freeze({

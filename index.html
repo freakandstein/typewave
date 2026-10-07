@@ -33,41 +33,22 @@
   .hud-state { font-size: calc(96px * var(--k)); }
   .hud-wpm { font-size: calc(64px * var(--k)); opacity: 0; transition: opacity 1500ms ease; }
   .hud-wpm.on { opacity: 1; transition: opacity 400ms ease; }
-  /* Satu baris pendek di pojok: titik sensor, ikon hati, HR. Tanpa timer sesi. */
+  /* Baris HR di bawah wpm: ikon hati dan HR. Tanpa timer sesi. Titik sensor Muse ada di otak 3D (kanvas). */
   .hud-small { font-size: calc(28px * var(--k)); display: flex; align-items: center; gap: calc(10px * var(--k)); }
   .hud-heart { display: none; flex: none; width: calc(30px * var(--k)); height: calc(27px * var(--k)); color: #FF5E72; } /* ikon diam, tanpa animasi */
   .hud-heart.on { display: block; }
   .hud-heart svg { display: block; width: 100%; height: 100%; }
   /* Status panjang (mis. "menyambung ulang, percobaan 2") dibungkus jadi dua baris supaya tidak melebar. */
-  #hud > .hud-status { font-size: calc(28px * var(--k)); opacity: 0.8; white-space: normal; max-width: calc(320px * var(--k)); line-height: 1.1; }
+  #hud > .hud-status { font-size: calc(28px * var(--k)); opacity: 0.8; white-space: normal; max-width: calc(240px * var(--k)); line-height: 1.1; }
   .hud-debug { font: calc(14px * var(--k)) ui-monospace, Menlo, monospace; opacity: 0.75; left: 1%; bottom: 1%; white-space: pre; }
-  /* Kepala dilihat dari atas, dahi di atas: dua sensor dahi (AF7, AF8) dan dua di belakang telinga (TP9, TP10). Hijau = dipakai untuk level otak, kuning = kurang bagus (belum dipakai), cincin merah = buruk (tidak dipakai).
-     Tempatnya selalu disisakan (opacity, bukan display) supaya HR tidak bergeser saat titik muncul; di wide di kiri baris (baris rata kanan), di tall di kanan (baris rata kiri).
-     Ukuran semuanya berskala dari satu angka, --s (tinggi kepala): 88 px pada skala 1, sekitar 3 kali tinggi teks HR supaya jelas terlihat di OBS. */
-  .hud-contact { --s: calc(88px * var(--k)); position: relative; flex: none; align-self: center; width: var(--s); height: var(--s); opacity: 0; transition: opacity 600ms ease; }
-  .hud-contact.on { opacity: 1; }
-  .hud-contact::before { content: ''; position: absolute; inset: 12%; box-sizing: border-box; border: calc(var(--s) * 0.057) solid rgba(236, 231, 220, 0.5); border-radius: 50%; }
-  .hud-contact::after { content: ''; position: absolute; left: 50%; top: 0; margin-left: calc(var(--s) * -0.091); border-style: solid; border-color: transparent transparent rgba(236, 231, 220, 0.5);
-                        border-width: 0 calc(var(--s) * 0.091) calc(var(--s) * 0.148); }
-  .hud-contact .dot { position: absolute; width: calc(var(--s) * 0.273); height: calc(var(--s) * 0.273); margin: calc(var(--s) * -0.136) 0 0 calc(var(--s) * -0.136); box-sizing: border-box;
-                      border-radius: 50%; background: var(--c, transparent); border: calc(var(--s) * 0.057) solid var(--c, transparent);
-                      transition: background-color 500ms ease, border-color 500ms ease; }
-  .hud-contact .dot.af7 { left: 28%; top: 19%; }
-  .hud-contact .dot.af8 { left: 72%; top: 19%; }
-  .hud-contact .dot.tp9 { left: 12.6%; top: 56.6%; }
-  .hud-contact .dot.tp10 { left: 87.4%; top: 56.6%; }
-  .hud-contact .dot.good { --c: #7ADFA0; }
-  .hud-contact .dot.fair { --c: #F2B24E; }
-  .hud-contact .dot.poor { --c: #FF5E72; background: transparent; }
-  .layout-tall .hud-contact { order: 1; }
   .layout-wide .hud-state { left: 4%; top: 4%; }
   .layout-wide .hud-wpm { left: 4%; top: calc(4% + 104px * var(--k)); }
-  .layout-wide .hud-small { right: 4%; top: 4%; }
-  .layout-wide .hud-status { right: 4%; top: calc(4% + 96px * var(--k)); text-align: right; }
+  .layout-wide .hud-small { left: 4%; top: calc(4% + 184px * var(--k)); }
+  .layout-wide .hud-status { left: 4%; top: calc(4% + 232px * var(--k)); text-align: left; }
   .layout-tall .hud-state { left: 6%; top: 11%; }
   .layout-tall .hud-wpm { left: 6%; top: calc(11% + 104px * var(--k)); }
   .layout-tall .hud-small { left: 6%; top: calc(11% + 184px * var(--k)); }
-  .layout-tall .hud-status { left: 6%; top: calc(11% + 280px * var(--k)); text-align: left; }
+  .layout-tall .hud-status { left: 6%; top: calc(11% + 232px * var(--k)); text-align: left; }
   #demo-hint { position: fixed; left: 12px; bottom: 8px; margin: 0; max-width: calc(100vw - 330px); font: 12px/1.4 system-ui, sans-serif; color: rgba(236, 231, 220, 0.7); z-index: 4; pointer-events: none; }
   #demo-hint a { color: inherit; pointer-events: auto; }
   #panel { position: fixed; right: 12px; bottom: 12px; z-index: 5; display: none; font: 12px system-ui, sans-serif;
